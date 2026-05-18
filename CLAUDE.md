@@ -4,12 +4,14 @@ This project is built around a strict architectural privacy boundary: **Claude m
 
 ## Files Claude Edits
 
-Two JSON files in `local-tools/` are edited by Claude Cowork during teacher conversations:
+The dashboard's data lives inside `local-tools/ClassAI-dashboard.html` as two inline JSON blocks:
 
-- `local-tools/manifest.json` — sidebar tools list. Changes rarely (when a new tool ships).
-- `local-tools/dashboard-data.json` — class-goal cards. Changes often.
+- `<script type="application/json" id="manifest">…</script>` — sidebar tools list. Changes rarely (when a new tool ships).
+- `<script type="application/json" id="dashboard-data">…</script>` — class-goal cards. Changes often.
 
-The teacher never opens or edits these files directly. All authoring happens via chat with Claude.
+The data is embedded inline because modern browsers block `fetch()` to sibling files under the `file://` protocol — keeping it inline means the teacher can double-click the HTML and have it work, no server required.
+
+When editing, target the JSON content **inside** these script blocks, not the surrounding HTML. The teacher never opens or edits this file directly. All authoring happens via chat with Claude.
 
 ## Rules When Editing These Files
 

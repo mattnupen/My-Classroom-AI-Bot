@@ -26,9 +26,7 @@ The dashboard is purely visual (read-only in the browser). All authoring happens
 ```
 MyClassroomAIbot/
 ├── local-tools/
-│   ├── ClassAI-dashboard.html     ← the new homepage (this spec)
-│   ├── dashboard-data.json        ← Claude-edited: cards content
-│   ├── manifest.json              ← Claude-edited: sidebar tools list (already exists)
+│   ├── ClassAI-dashboard.html     ← the new homepage (this spec) — also holds inline JSON data
 │   ├── gradebook-analytics.html   ← existing CSV-based stats tool (renamed from class-dashboard.html)
 │   ├── badges.html                ← existing local tool
 │   ├── class-pulse.html           ← existing local tool
@@ -39,6 +37,8 @@ MyClassroomAIbot/
 │   └── [other apps as added]
 ```
 
+The two data files originally specified as separate JSON (`manifest.json`, `dashboard-data.json`) live inline inside `ClassAI-dashboard.html` as `<script type="application/json">` blocks. This is required so the page works via double-click — modern browsers block `fetch()` to sibling files under the `file://` protocol.
+
 ### Rename of Existing File
 
 The existing `class-dashboard.html` (a CSV-upload per-student analytics tool) is renamed to `gradebook-analytics.html` to free the "dashboard" concept for the new homepage. The renamed tool retains all its functionality unchanged and appears in the new homepage's sidebar like any other tool.
@@ -46,20 +46,22 @@ The existing `class-dashboard.html` (a CSV-upload per-student analytics tool) is
 ### Runtime Behavior
 
 1. Teacher opens `local-tools/ClassAI-dashboard.html` in their browser (double-click). This is the project's front door.
-2. The page fetches `./dashboard-data.json` and `./manifest.json` via `fetch()`.
-3. JS renders the sidebar from `manifest.json` and the bento grid of cards from `dashboard-data.json`.
+2. The page reads its inline `<script type="application/json" id="manifest">` and `<script type="application/json" id="dashboard-data">` blocks via `document.getElementById(...).textContent` and `JSON.parse`.
+3. JS renders the sidebar from the manifest block and the bento grid of cards from the dashboard-data block.
 4. Sidebar links are plain anchors (`<a href="./<file>.html">`) — navigation is the browser's default behavior.
-5. No gradebook CSV is required. The dashboard renders fully from JSON alone. CSV-based features live in `gradebook-analytics.html` (and other future per-student tools), reached via the sidebar.
+5. No gradebook CSV is required. The dashboard renders fully from inline data alone. CSV-based features live in `gradebook-analytics.html` (and other future per-student tools), reached via the sidebar.
 
-### Why Two JSON Files
+### Why Inline JSON Blocks
 
-Different update cadences. `manifest.json` changes rarely (a new tool ships). `dashboard-data.json` changes often (Claude updates cards during a cowork chat). Separate files mean smaller diffs and lower conflict risk. The teacher never opens either file directly — both are edited exclusively by Claude Cowork.
+Modern browsers block `fetch()` to sibling files when a page is opened via the `file://` protocol (i.e., by double-clicking the HTML). Inlining both data structures as `<script type="application/json">` blocks lets the page work without a local server while preserving structured JSON that Claude can edit independently of the HTML.
+
+The two blocks still have different update cadences: the `manifest` block changes rarely (a new tool ships); the `dashboard-data` block changes often. Claude edits them as separate JSON regions inside the HTML.
 
 ## Data Schemas
 
-### `manifest.json`
+### Manifest block (`#manifest`)
 
-The existing `manifest.json` is extended with an `apps` array. The file already carries `schema_version` and `generated_at` — those are preserved.
+The inline `<script type="application/json" id="manifest">` block contains an apps registry with `schema_version`, `generated_at`, and an `apps` array.
 
 ```json
 {
@@ -82,9 +84,9 @@ App entry fields:
 - `file` — sibling filename in `local-tools/`. Used as the link href.
 - `description` — optional short blurb shown on hover or in a tooltip.
 
-The seed `manifest.json` ships with the eight existing tools pre-registered: `badges`, `class-pulse`, `cold-call`, `gradebook-analytics`, `parent-messages`, `random-groups`, `student-cards`, and any others present at build time.
+The seed manifest ships with the seven existing tools pre-registered: `badges`, `class-pulse`, `cold-call`, `gradebook-analytics`, `parent-messages`, `random-groups`, `student-cards`, and any others present at build time.
 
-### `dashboard-data.json`
+### Dashboard-data block (`#dashboard-data`)
 
 ```json
 {
@@ -203,7 +205,7 @@ The dashboard is read-only in the browser. All authoring happens via Claude edit
 ### Update Flow
 
 1. Teacher chats with Claude (e.g., "We finished the warm-up routine goal — 5/5 weeks done, can we mark it complete?").
-2. Claude reads `dashboard-data.json`.
+2. Claude reads the `#dashboard-data` block inside `ClassAI-dashboard.html`.
 3. Claude locates the relevant card by `id`. If ambiguous, Claude asks the teacher to clarify.
 4. Claude edits the JSON using its Edit tool (targeted replacement, not full-file overwrite).
 5. Claude confirms the change in chat.
@@ -217,11 +219,11 @@ The dashboard is read-only in the browser. All authoring happens via Claude edit
 
 ### Adding a New Offline Tool
 
-When a new HTML tool is created in `local-tools/`, Claude appends an entry to `manifest.json`. No change to `ClassAI-dashboard.html` required — the sidebar re-renders from the manifest on next page load.
+When a new HTML tool is created in `local-tools/`, Claude appends an entry to the `#manifest` block inside `ClassAI-dashboard.html`. The sidebar re-renders from the manifest on next page load.
 
 ## Error Handling
 
-- **Malformed JSON** — `ClassAI-dashboard.html` shows a non-blocking error banner at the top: "Couldn't read dashboard-data.json — check the file or ask Claude to fix it." The rest of the page still renders if the other file is valid.
+- **Malformed JSON** — `ClassAI-dashboard.html` shows a non-blocking error banner at the top (e.g., "Couldn't read #dashboard-data — Unexpected token..."). The rest of the page still renders if the other block is valid.
 - **Missing fields on a card** — renderer uses safe defaults: empty body, no progress bar, neutral tone.
 - **Unknown card `type`** — renders as a plain text card with a subtle "unknown type: X" note.
 - **Empty `cards` array** — renders an empty-state message: "No dashboard cards yet. Set them up with Claude Cowork."
@@ -233,7 +235,7 @@ This dashboard sits inside the Claude project folder and the JSON files are read
 
 ## Out of Scope
 
-- **Onboarding flow** — how the initial `dashboard-data.json` gets populated for a teacher. The dashboard renders whatever it's given; onboarding is a separate spec.
+- **Onboarding flow** — how the initial `#dashboard-data` content gets populated for a teacher. The dashboard renders whatever it's given; onboarding is a separate spec.
 - **Authoring UI** — no in-page editing. All edits go through Claude Cowork.
 - **Multi-class support** — single class only for v1.
 - **Theming / dark mode** — light theme only for v1.

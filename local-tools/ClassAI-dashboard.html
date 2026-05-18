@@ -310,6 +310,124 @@
     <div id="grid" class="grid"></div>
   </main>
 </div>
+
+<!--
+  Data blocks below are edited by Claude Cowork.
+  Aggregate text only — NEVER include student names, grades, or per-student data.
+  Keep this file openable by double-click; data lives inline so browsers
+  don't block cross-file fetches under the file:// protocol.
+-->
+<script type="application/json" id="manifest">
+{
+  "schema_version": 1,
+  "generated_at": "2026-05-17T00:00:00Z",
+  "apps": [
+    {
+      "id": "badges",
+      "label": "Badges",
+      "file": "badges.html",
+      "description": "Generate printable student recognition badges"
+    },
+    {
+      "id": "class-pulse",
+      "label": "Class Pulse",
+      "file": "class-pulse.html",
+      "description": "Quick read on how the class is doing"
+    },
+    {
+      "id": "cold-call",
+      "label": "Cold Call",
+      "file": "cold-call.html",
+      "description": "Randomly pick a student to call on"
+    },
+    {
+      "id": "gradebook-analytics",
+      "label": "Gradebook Analytics",
+      "file": "gradebook-analytics.html",
+      "description": "Upload a gradebook CSV for per-student stats"
+    },
+    {
+      "id": "parent-messages",
+      "label": "Parent Messages",
+      "file": "parent-messages.html",
+      "description": "Draft parent-facing messages"
+    },
+    {
+      "id": "random-groups",
+      "label": "Random Groups",
+      "file": "random-groups.html",
+      "description": "Shuffle the class into small groups"
+    },
+    {
+      "id": "student-cards",
+      "label": "Student Cards",
+      "file": "student-cards.html",
+      "description": "Per-student printable info cards"
+    }
+  ]
+}
+</script>
+
+<script type="application/json" id="dashboard-data">
+{
+  "title": "My Class",
+  "subtitle": "Set up by Claude Cowork during onboarding",
+  "cards": [
+    {
+      "id": "current-unit",
+      "size": "large",
+      "type": "progress",
+      "title": "Current Unit",
+      "body": "Replace this card during onboarding with your current curriculum focus.",
+      "progress": 0.0,
+      "tone": "neutral"
+    },
+    {
+      "id": "focus-this-week",
+      "size": "medium",
+      "type": "text",
+      "title": "Focus This Week",
+      "body": "What is your class working on this week? Update with Claude Cowork.",
+      "tone": "neutral"
+    },
+    {
+      "id": "upcoming",
+      "size": "small",
+      "type": "dates",
+      "title": "Upcoming",
+      "body": [
+        "No dates yet — add some with Claude Cowork"
+      ],
+      "tone": "neutral"
+    },
+    {
+      "id": "teacher-goals",
+      "size": "medium",
+      "type": "checklist",
+      "title": "My Teaching Goals",
+      "body": [
+        { "text": "Add a goal during onboarding", "done": false }
+      ],
+      "tone": "neutral"
+    },
+    {
+      "id": "generated-artifacts",
+      "size": "small",
+      "type": "files",
+      "title": "Generated Files",
+      "body": [
+        {
+          "name": "Nothing here yet",
+          "type": "folder",
+          "children": []
+        }
+      ],
+      "tone": "neutral"
+    }
+  ]
+}
+</script>
+
 <script>
 const $ = (id) => document.getElementById(id);
 const errors = [];
@@ -320,13 +438,13 @@ function showErrors() {
   banner.textContent = errors.join(' · ');
 }
 
-async function loadJSON(path) {
+function loadInlineJSON(id) {
   try {
-    const res = await fetch(path);
-    if (!res.ok) throw new Error(`${path}: ${res.status}`);
-    return await res.json();
+    const el = document.getElementById(id);
+    if (!el) throw new Error(`#${id} block not found`);
+    return JSON.parse(el.textContent);
   } catch (err) {
-    errors.push(`Couldn't read ${path} — ${err.message}`);
+    errors.push(`Couldn't read #${id} — ${err.message}`);
     showErrors();
     return null;
   }
@@ -506,11 +624,9 @@ function renderFileNode(node) {
   return li;
 }
 
-async function init() {
-  const [manifest, data] = await Promise.all([
-    loadJSON('./manifest.json'),
-    loadJSON('./dashboard-data.json'),
-  ]);
+function init() {
+  const manifest = loadInlineJSON('manifest');
+  const data = loadInlineJSON('dashboard-data');
   renderSidebar(manifest);
   renderHeader(data);
   renderCards(data);
