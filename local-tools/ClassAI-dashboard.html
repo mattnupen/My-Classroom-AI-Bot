@@ -188,6 +188,30 @@
     margin-top: 6px;
     font-style: italic;
   }
+  .card ul.files-tree, .card ul.files-tree ul {
+    list-style: none;
+    padding-left: 14px;
+    margin: 0;
+  }
+  .card ul.files-tree { padding-left: 0; }
+  .card ul.files-tree li {
+    padding: 2px 0;
+    font-size: 13px;
+  }
+  .card ul.files-tree li.folder > .label { font-weight: 600; }
+  .card ul.files-tree li .label::before {
+    display: inline-block;
+    width: 14px;
+    margin-right: 2px;
+  }
+  .card ul.files-tree li.folder > .label::before { content: "▸"; color: var(--muted); }
+  .card ul.files-tree li.file   > .label::before { content: "·"; color: var(--muted); }
+  .card ul.files-tree li.file a { color: var(--accent); text-decoration: none; }
+  .card ul.files-tree li.file a:hover { text-decoration: underline; }
+  .card ul.files-tree li.empty {
+    color: var(--muted);
+    font-style: italic;
+  }
 </style>
 </head>
 <body>
@@ -295,6 +319,7 @@ function renderCardBody(container, card) {
     case 'text':     return renderText(container, card);
     case 'dates':    return renderDates(container, card);
     case 'checklist':return renderChecklist(container, card);
+    case 'files':    return renderFiles(container, card);
     default:
       container.textContent = card.body ? String(card.body) : '';
       const note = document.createElement('span');
@@ -349,6 +374,55 @@ function renderChecklist(container, card) {
     ul.appendChild(li);
   }
   container.appendChild(ul);
+}
+
+function renderFiles(container, card) {
+  const items = Array.isArray(card.body) ? card.body : [];
+  if (items.length === 0) {
+    container.innerHTML = '<span class="unknown-type">No files yet</span>';
+    return;
+  }
+  const ul = document.createElement('ul');
+  ul.className = 'files-tree';
+  for (const node of items) ul.appendChild(renderFileNode(node));
+  container.appendChild(ul);
+}
+
+function renderFileNode(node) {
+  const li = document.createElement('li');
+  const label = document.createElement('span');
+  label.className = 'label';
+
+  if (node && node.type === 'folder') {
+    li.classList.add('folder');
+    label.textContent = ' ' + (node.name || 'Untitled folder');
+    li.appendChild(label);
+    const children = Array.isArray(node.children) ? node.children : [];
+    if (children.length === 0) {
+      const empty = document.createElement('ul');
+      const emptyLi = document.createElement('li');
+      emptyLi.className = 'empty';
+      emptyLi.textContent = '(empty)';
+      empty.appendChild(emptyLi);
+      li.appendChild(empty);
+    } else {
+      const sub = document.createElement('ul');
+      for (const child of children) sub.appendChild(renderFileNode(child));
+      li.appendChild(sub);
+    }
+  } else {
+    li.classList.add('file');
+    if (node && node.href) {
+      const a = document.createElement('a');
+      a.href = node.href;
+      a.textContent = ' ' + (node.name || node.href);
+      label.appendChild(a);
+    } else {
+      label.textContent = ' ' + ((node && node.name) || 'Untitled');
+    }
+    li.appendChild(label);
+  }
+  return li;
 }
 
 async function init() {
