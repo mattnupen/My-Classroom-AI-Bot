@@ -130,7 +130,59 @@
   </main>
 </div>
 <script>
-  // Renderer will be filled in by Task 5 onwards.
+const $ = (id) => document.getElementById(id);
+const errors = [];
+
+function showErrors() {
+  const banner = $('error-banner');
+  if (errors.length === 0) { banner.textContent = ''; return; }
+  banner.textContent = errors.join(' · ');
+}
+
+async function loadJSON(path) {
+  try {
+    const res = await fetch(path);
+    if (!res.ok) throw new Error(`${path}: ${res.status}`);
+    return await res.json();
+  } catch (err) {
+    errors.push(`Couldn't read ${path} — ${err.message}`);
+    showErrors();
+    return null;
+  }
+}
+
+function renderSidebar(manifest) {
+  const nav = $('sidebar-nav');
+  nav.innerHTML = '';
+  const apps = (manifest && manifest.apps) || [];
+  if (apps.length === 0) {
+    nav.innerHTML = '<div class="empty">No tools yet</div>';
+    return;
+  }
+  for (const app of apps) {
+    const a = document.createElement('a');
+    a.className = 'nav-item';
+    a.href = `./${app.file}`;
+    a.innerHTML = `${escapeHtml(app.label || app.id)}` +
+      (app.description ? `<span class="desc">${escapeHtml(app.description)}</span>` : '');
+    nav.appendChild(a);
+  }
+}
+
+function escapeHtml(s) {
+  return String(s == null ? '' : s)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+async function init() {
+  const manifest = await loadJSON('./manifest.json');
+  renderSidebar(manifest);
+}
+
+init();
 </script>
 </body>
 </html>
