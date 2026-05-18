@@ -1,0 +1,700 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Parent Messages</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
+<style>
+  :root {
+    --ink: #111827;
+    --muted: #6b7280;
+    --line: #e5e7eb;
+    --accent: #2563eb;
+    --accent-soft: #eff6ff;
+    --strong: #059669;
+    --steady: #2563eb;
+    --struggling: #b91c1c;
+    --good-soft: #ecfdf5;
+    --bg: #fafafa;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; background: var(--bg); color: var(--ink); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; }
+
+  header.app {
+    background: white;
+    border-bottom: 1px solid var(--line);
+    padding: 24px 32px;
+  }
+  header.app h1 { margin: 0 0 6px; font-size: 22px; }
+  header.app p { margin: 0; color: var(--muted); font-size: 14px; max-width: 760px; line-height: 1.5; }
+
+  main { max-width: 1100px; margin: 0 auto; padding: 24px 32px 80px; }
+
+  .step {
+    background: white;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 20px 24px;
+    margin-bottom: 18px;
+  }
+  .step h2 { margin: 0 0 14px; font-size: 14px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); }
+  .step.disabled { opacity: 0.5; pointer-events: none; }
+
+  .dropzone {
+    border: 2px dashed #d1d5db;
+    border-radius: 8px;
+    padding: 22px 20px;
+    text-align: center;
+    background: #fafafa;
+    cursor: pointer;
+    transition: 0.15s;
+    display: block;
+  }
+  .dropzone:hover, .dropzone.dragover { border-color: var(--accent); background: var(--accent-soft); }
+  .dropzone strong { display: block; font-size: 14px; margin-bottom: 2px; }
+  .dropzone span { color: var(--muted); font-size: 12px; }
+  .dropzone input { display: none; }
+
+  .file-status {
+    margin-top: 10px;
+    padding: 8px 12px;
+    background: var(--good-soft);
+    border: 1px solid #a7f3d0;
+    border-radius: 6px;
+    font-size: 13px;
+    color: #065f46;
+  }
+  .file-status::before { content: "✓ "; font-weight: 700; }
+
+  label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 4px; font-weight: 500; }
+  select, input[type="text"], input[type="number"], textarea {
+    width: 100%;
+    padding: 8px 10px;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    font-size: 13px;
+    font-family: inherit;
+    background: white;
+    color: var(--ink);
+  }
+  textarea { min-height: 130px; resize: vertical; line-height: 1.5; font-size: 13px; }
+  select:focus, input:focus, textarea:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(37,99,235,0.15); }
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; }
+  .hint { font-size: 12px; color: var(--muted); margin-top: 4px; line-height: 1.5; }
+
+  button {
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 500;
+    padding: 8px 14px;
+    border-radius: 6px;
+    border: 1px solid transparent;
+    cursor: pointer;
+    transition: 0.1s;
+  }
+  button.primary { background: var(--accent); color: white; }
+  button.primary:hover { background: #1d4ed8; }
+  button.secondary { background: white; color: var(--ink); border-color: #d1d5db; }
+  button.secondary:hover { background: #f9fafb; }
+  button.small { padding: 4px 10px; font-size: 12px; }
+  button:disabled { opacity: 0.5; cursor: not-allowed; }
+  .actions { display: flex; gap: 10px; flex-wrap: wrap; }
+
+  /* Placeholder reference */
+  .placeholders {
+    background: #f9fafb;
+    border-radius: 8px;
+    padding: 12px 16px;
+    margin-bottom: 16px;
+    font-size: 12px;
+    color: var(--muted);
+    line-height: 1.7;
+  }
+  .placeholders code {
+    background: white;
+    padding: 1px 6px;
+    border-radius: 4px;
+    border: 1px solid var(--line);
+    color: var(--ink);
+    font-size: 11.5px;
+  }
+
+  /* Template panels */
+  .tmpl-stack { display: flex; flex-direction: column; gap: 14px; }
+  .tmpl-card {
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 14px 16px;
+    background: white;
+  }
+  .tmpl-card .head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 8px; }
+  .tmpl-card .tier-badge {
+    padding: 3px 10px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  .badge-strong { background: #d1fae5; color: var(--strong); }
+  .badge-steady { background: #dbeafe; color: var(--steady); }
+  .badge-struggling { background: #fee2e2; color: var(--struggling); }
+  .tmpl-card .head-meta { font-size: 12px; color: var(--muted); }
+
+  /* Messages output */
+  .summary { display: flex; gap: 22px; flex-wrap: wrap; padding: 14px 18px; background: #f3f4f6; border-radius: 8px; margin-bottom: 18px; font-size: 13px; }
+  .summary > div strong { display: block; font-size: 22px; color: var(--ink); font-weight: 700; margin-bottom: 2px; }
+  .summary > div span { color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; font-size: 11px; }
+
+  .msg-card {
+    background: white;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    margin-bottom: 14px;
+    overflow: hidden;
+  }
+  .msg-card .head {
+    padding: 12px 18px;
+    background: #f9fafb;
+    border-bottom: 1px solid var(--line);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+  .msg-card .head .name { font-weight: 700; font-size: 15px; }
+  .msg-card .head .meta { font-size: 12px; color: var(--muted); }
+  .msg-card .head .pills { display: flex; gap: 6px; flex-wrap: wrap; }
+  .pill { padding: 2px 9px; border-radius: 999px; font-size: 11px; font-weight: 600; }
+  .pill.grade-A { background: #d1fae5; color: var(--strong); }
+  .pill.grade-B { background: #dbeafe; color: var(--steady); }
+  .pill.grade-C { background: #fef3c7; color: #92400e; }
+  .pill.grade-D { background: #fed7aa; color: #9a3412; }
+  .pill.grade-F { background: #fee2e2; color: var(--struggling); }
+  .pill.grade-NA { background: #f3f4f6; color: var(--muted); }
+  .pill.tier-strong { background: #d1fae5; color: var(--strong); }
+  .pill.tier-steady { background: #dbeafe; color: var(--steady); }
+  .pill.tier-struggling { background: #fee2e2; color: var(--struggling); }
+
+  .msg-card .subject {
+    padding: 10px 18px;
+    border-bottom: 1px dashed var(--line);
+    font-size: 13px;
+  }
+  .msg-card .subject strong { font-weight: 600; color: var(--muted); margin-right: 6px; }
+
+  .msg-card .body {
+    padding: 14px 18px;
+    font-size: 14px;
+    line-height: 1.6;
+    color: var(--ink);
+    white-space: pre-wrap;
+  }
+  .msg-card .actions-row {
+    padding: 10px 18px;
+    border-top: 1px solid var(--line);
+    background: #fafafa;
+    display: flex;
+    gap: 8px;
+    align-items: center;
+  }
+  .copy-confirm { color: var(--strong); font-size: 12px; font-weight: 600; margin-left: 8px; opacity: 0; transition: 0.2s; }
+  .copy-confirm.show { opacity: 1; }
+
+  .empty-state { padding: 30px 20px; text-align: center; color: var(--muted); font-size: 14px; background: white; border: 1px dashed var(--line); border-radius: 10px; }
+</style>
+</head>
+<body>
+
+<header class="app">
+  <h1>Parent Messages</h1>
+  <p>Write one message template per tier (Strong / Steady / Struggling). Drop in the gradebook. The tool fills in each student's name, grade, missing assignments, and other details — and gives you a list of per-student messages ready to copy into ParentSquare, email, or wherever you communicate with families.</p>
+</header>
+
+<main>
+
+  <!-- STEP 1: Upload -->
+  <section class="step">
+    <h2>Step 1 &mdash; Load your gradebook</h2>
+    <label class="dropzone" id="dz-gradebook">
+      <strong>Drop a CSV or XLSX file</strong>
+      <span>or click to choose &middot; nothing leaves your computer</span>
+      <input type="file" id="file-gradebook" accept=".csv,.xlsx,.xls">
+    </label>
+    <div id="status-gradebook" class="file-status" style="display:none;"></div>
+  </section>
+
+  <!-- STEP 2: Mapping & thresholds -->
+  <section class="step disabled" id="step-mapping">
+    <h2>Step 2 &mdash; Columns &amp; tier rules</h2>
+    <div class="grid-2">
+      <div>
+        <label>Student name column</label>
+        <select id="map-name"></select>
+      </div>
+      <div>
+        <label>Period column</label>
+        <select id="map-period"><option value="">(none)</option></select>
+      </div>
+    </div>
+    <div class="grid-3" style="margin-top:12px;">
+      <div>
+        <label>Strong: missing ≤</label>
+        <input type="number" id="threshold-strong" value="0" min="0">
+      </div>
+      <div>
+        <label>Steady: missing ≤</label>
+        <input type="number" id="threshold-steady" value="2" min="0">
+      </div>
+      <div>
+        <label>Struggling: missing more than that</label>
+        <input type="text" id="threshold-struggling-display" value="3 or more" readonly style="background:#f9fafb;">
+      </div>
+    </div>
+    <div style="margin-top:10px;">
+      <label style="display:inline;color:var(--ink);font-size:13px;"><input type="checkbox" id="treat-blank-as-missing" style="width:auto;margin-right:6px;"> Treat blank cells as missing</label>
+    </div>
+  </section>
+
+  <!-- STEP 3: Templates -->
+  <section class="step disabled" id="step-templates">
+    <h2>Step 3 &mdash; Message templates</h2>
+
+    <div class="placeholders">
+      <strong style="color:var(--ink);">Placeholders you can use:</strong><br>
+      <code>{first_name}</code> <code>{full_name}</code> <code>{period}</code>
+      <code>{grade_pct}</code> <code>{grade_letter}</code>
+      <code>{missing_count}</code> <code>{missing_list}</code> <code>{missing_list_inline}</code>
+      <code>{points_to_recover}</code>
+    </div>
+
+    <div style="margin-bottom:14px;">
+      <label>Subject line (shared across all tiers — leave blank to skip)</label>
+      <input type="text" id="subject-tmpl" placeholder="e.g. Quick update on {first_name} — {period}">
+    </div>
+
+    <div class="tmpl-stack">
+
+      <div class="tmpl-card">
+        <div class="head">
+          <span class="tier-badge badge-strong">Strong</span>
+          <span class="head-meta">Sent to students who hit the Strong tier &middot; leave blank to skip this tier</span>
+        </div>
+        <textarea id="tmpl-strong" placeholder="e.g. Hi {first_name}'s family, just a quick note — {first_name} is doing great in {period}. Current grade: {grade_pct}% with no missing assignments..."></textarea>
+      </div>
+
+      <div class="tmpl-card">
+        <div class="head">
+          <span class="tier-badge badge-steady">Steady</span>
+          <span class="head-meta">Sent to students who hit the Steady tier &middot; leave blank to skip this tier</span>
+        </div>
+        <textarea id="tmpl-steady" placeholder="e.g. Hi {first_name}'s family, quick update on {first_name} in {period}. Current grade: {grade_pct}%. They have {missing_count} missing assignment(s): {missing_list}"></textarea>
+      </div>
+
+      <div class="tmpl-card">
+        <div class="head">
+          <span class="tier-badge badge-struggling">Struggling</span>
+          <span class="head-meta">Sent to students who hit the Struggling tier &middot; leave blank to skip this tier</span>
+        </div>
+        <textarea id="tmpl-struggling" placeholder="e.g. Hi {first_name}'s family, I'm reaching out about {first_name}'s progress in {period}. Current grade is {grade_pct}% with {missing_count} missing assignments worth {points_to_recover} points: {missing_list}"></textarea>
+      </div>
+    </div>
+
+    <div class="actions" style="margin-top:14px;">
+      <button class="secondary small" id="btn-load-defaults">Load sample templates</button>
+      <button class="secondary small" id="btn-export-templates">Export templates as JSON</button>
+      <button class="secondary small" id="btn-import-templates">Import templates from JSON</button>
+      <input type="file" id="import-templates-input" accept=".json" hidden>
+      <button class="secondary small" id="btn-clear-templates">Clear all templates</button>
+    </div>
+    <p class="hint">Templates auto-save in this browser. Export to a JSON file if you want to back them up or share with a colleague.</p>
+  </section>
+
+  <!-- STEP 4: Filter & generate -->
+  <section class="step disabled" id="step-generate">
+    <h2>Step 4 &mdash; Filter &amp; generate</h2>
+    <div class="grid-2">
+      <div>
+        <label>Filter by period</label>
+        <select id="filter-period"><option value="">All periods</option></select>
+      </div>
+      <div>
+        <label>Filter by tier</label>
+        <select id="filter-tier">
+          <option value="">All tiers (with a template)</option>
+          <option value="strong">Strong only</option>
+          <option value="steady">Steady only</option>
+          <option value="struggling">Struggling only</option>
+        </select>
+      </div>
+    </div>
+    <div class="actions" style="margin-top:14px;">
+      <button class="primary" id="btn-generate">Generate messages</button>
+      <button class="secondary" id="btn-reset">Start over</button>
+    </div>
+  </section>
+
+  <!-- Output -->
+  <div id="summary" class="summary" style="display:none;"></div>
+  <div id="messages-area"></div>
+
+</main>
+
+<script>
+let workbookData = null;
+let lastMessages = null;
+const TEMPLATE_KEY = 'parent-messages-templates-v1';
+
+const $ = sel => document.querySelector(sel);
+
+// ---------- Drop zone ----------
+const dz = $('#dz-gradebook');
+['dragenter','dragover'].forEach(ev => dz.addEventListener(ev, e => { e.preventDefault(); dz.classList.add('dragover'); }));
+['dragleave','drop'].forEach(ev => dz.addEventListener(ev, e => { e.preventDefault(); dz.classList.remove('dragover'); }));
+dz.addEventListener('drop', e => { const f = e.dataTransfer.files[0]; if (f) loadGradebook(f); });
+$('#file-gradebook').addEventListener('change', e => { const f = e.target.files[0]; if (f) loadGradebook(f); });
+
+function loadGradebook(file) {
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const data = new Uint8Array(e.target.result);
+      const wb = XLSX.read(data, { type: 'array' });
+      const sheet = wb.Sheets[wb.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json(sheet, { defval: '' });
+      if (!rows.length) throw new Error('No rows found.');
+      workbookData = { headers: Object.keys(rows[0]), rows };
+      $('#status-gradebook').style.display = 'block';
+      $('#status-gradebook').textContent = `Loaded ${file.name} — ${rows.length} students.`;
+      setupMapping();
+      document.querySelectorAll('.step.disabled').forEach(s => s.classList.remove('disabled'));
+    } catch (err) {
+      $('#status-gradebook').style.background = '#fee2e2';
+      $('#status-gradebook').style.color = '#991b1b';
+      $('#status-gradebook').style.display = 'block';
+      $('#status-gradebook').textContent = `Could not read this file: ${err.message}`;
+    }
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+function setupMapping() {
+  const headers = workbookData.headers;
+  const nameSel = $('#map-name'), periodSel = $('#map-period'), filterSel = $('#filter-period');
+  nameSel.innerHTML = '';
+  periodSel.innerHTML = '<option value="">(none)</option>';
+  headers.forEach(h => {
+    const o = `<option value="${escAttr(h)}">${escHtml(h)}</option>`;
+    nameSel.insertAdjacentHTML('beforeend', o);
+    periodSel.insertAdjacentHTML('beforeend', o);
+  });
+  nameSel.value = headers.find(h => /^(student|name|student name|full name)$/i.test(h.trim())) || headers[0];
+  const p = headers.find(h => /(period|class|section|hour|block)/i.test(h));
+  if (p) periodSel.value = p;
+
+  filterSel.innerHTML = '<option value="">All periods</option>';
+  if (periodSel.value) {
+    [...new Set(workbookData.rows.map(r => String(r[periodSel.value] || '').trim()).filter(Boolean))].sort()
+      .forEach(p => filterSel.insertAdjacentHTML('beforeend', `<option value="${escAttr(p)}">${escHtml(p)}</option>`));
+  }
+}
+
+$('#map-period').addEventListener('change', () => setupMapping());
+$('#threshold-steady').addEventListener('input', () => {
+  const n = parseInt($('#threshold-steady').value, 10) || 0;
+  $('#threshold-struggling-display').value = `${n + 1} or more`;
+});
+
+// ---------- Template persistence ----------
+function saveTemplates() {
+  const t = {
+    subject: $('#subject-tmpl').value,
+    strong: $('#tmpl-strong').value,
+    steady: $('#tmpl-steady').value,
+    struggling: $('#tmpl-struggling').value
+  };
+  localStorage.setItem(TEMPLATE_KEY, JSON.stringify(t));
+}
+function loadTemplates() {
+  try {
+    const raw = localStorage.getItem(TEMPLATE_KEY);
+    if (!raw) return;
+    const t = JSON.parse(raw);
+    $('#subject-tmpl').value = t.subject || '';
+    $('#tmpl-strong').value = t.strong || '';
+    $('#tmpl-steady').value = t.steady || '';
+    $('#tmpl-struggling').value = t.struggling || '';
+  } catch (e) { /* ignore */ }
+}
+loadTemplates();
+['subject-tmpl','tmpl-strong','tmpl-steady','tmpl-struggling'].forEach(id =>
+  document.getElementById(id).addEventListener('input', saveTemplates)
+);
+
+$('#btn-load-defaults').addEventListener('click', () => {
+  $('#subject-tmpl').value = 'Quick update on {first_name} — {period}';
+  $('#tmpl-strong').value =
+`Hi {first_name}'s family,
+
+Just a quick note — {first_name} is doing great in {period}. Current grade: {grade_pct}% ({grade_letter}). No missing assignments. I wanted to take a moment to celebrate them with you.
+
+If you have a chance, please pass this along. A note from home goes a long way.
+
+Thanks for your partnership,
+[Your name]`;
+  $('#tmpl-steady').value =
+`Hi {first_name}'s family,
+
+Quick update on {first_name} in {period}. Current grade: {grade_pct}% ({grade_letter}). They have {missing_count} missing assignment(s):
+
+{missing_list}
+
+These can still earn full credit through the end of the unit. Please ask {first_name} about them this week — I'm happy to help during advisory if they want support getting started.
+
+Thanks,
+[Your name]`;
+  $('#tmpl-struggling').value =
+`Hi {first_name}'s family,
+
+I'm reaching out about {first_name}'s progress in {period}. Currently their grade is {grade_pct}% ({grade_letter}) with {missing_count} missing assignments worth a total of {points_to_recover} points:
+
+{missing_list}
+
+I'd love to schedule a quick check-in to talk about a recovery plan together. Please reply with a time that works this week.
+
+Thanks for partnering with me on this,
+[Your name]`;
+  saveTemplates();
+});
+
+$('#btn-clear-templates').addEventListener('click', () => {
+  if (!confirm('Clear all templates? This cannot be undone.')) return;
+  ['subject-tmpl','tmpl-strong','tmpl-steady','tmpl-struggling'].forEach(id => document.getElementById(id).value = '');
+  saveTemplates();
+});
+
+$('#btn-export-templates').addEventListener('click', () => {
+  const t = {
+    subject: $('#subject-tmpl').value,
+    strong: $('#tmpl-strong').value,
+    steady: $('#tmpl-steady').value,
+    struggling: $('#tmpl-struggling').value
+  };
+  const blob = new Blob([JSON.stringify(t, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'parent-message-templates.json';
+  a.click();
+  URL.revokeObjectURL(a.href);
+});
+
+$('#btn-import-templates').addEventListener('click', () => $('#import-templates-input').click());
+$('#import-templates-input').addEventListener('change', e => {
+  const f = e.target.files[0];
+  if (!f) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    try {
+      const t = JSON.parse(ev.target.result);
+      $('#subject-tmpl').value = t.subject || '';
+      $('#tmpl-strong').value = t.strong || '';
+      $('#tmpl-steady').value = t.steady || '';
+      $('#tmpl-struggling').value = t.struggling || '';
+      saveTemplates();
+    } catch (err) {
+      alert('Could not read that JSON: ' + err.message);
+    }
+  };
+  reader.readAsText(f);
+});
+
+// ---------- Generate ----------
+$('#btn-generate').addEventListener('click', generate);
+$('#btn-reset').addEventListener('click', () => { localStorage.removeItem(TEMPLATE_KEY); location.reload(); });
+
+function generate() {
+  if (!workbookData) return;
+  const nameCol = $('#map-name').value;
+  const periodCol = $('#map-period').value || null;
+  const tStrong = parseInt($('#threshold-strong').value, 10);
+  const tSteady = parseInt($('#threshold-steady').value, 10);
+  const blankMissing = $('#treat-blank-as-missing').checked;
+
+  const filterPeriod = $('#filter-period').value;
+  const filterTier = $('#filter-tier').value;
+
+  const subjectTpl = $('#subject-tmpl').value;
+  const tmpls = {
+    strong: $('#tmpl-strong').value.trim(),
+    steady: $('#tmpl-steady').value.trim(),
+    struggling: $('#tmpl-struggling').value.trim()
+  };
+
+  const assignmentCols = workbookData.headers
+    .filter(h => h !== nameCol && h !== periodCol)
+    .map(h => ({ header: h, name: stripMaxPts(h), max: extractMax(h) }));
+
+  const messages = [];
+  for (const r of workbookData.rows) {
+    const period = periodCol ? String(r[periodCol] || '').trim() : '';
+    if (filterPeriod && period !== filterPeriod) continue;
+
+    const fullName = String(r[nameCol] || '').trim();
+    if (!fullName) continue;
+    const firstName = fullName.split(/[, ]+/)[0] || fullName;
+
+    const missingItems = [];
+    let earned = 0, possible = 0, pointsToRecover = 0;
+    for (const a of assignmentCols) {
+      const v = r[a.header];
+      if (isExcused(v)) continue;
+      if (isMissing(v, blankMissing)) {
+        missingItems.push(a);
+        if (a.max) { possible += a.max; pointsToRecover += a.max; }
+      } else {
+        const n = parseFloat(String(v).trim());
+        if (!isNaN(n) && a.max) { earned += n; possible += a.max; }
+        else if (a.max) { possible += a.max; }
+      }
+    }
+    const gradePct = possible > 0 ? Math.round((earned / possible) * 10) / 10 : null;
+    const tier = missingItems.length <= tStrong ? 'strong' : missingItems.length <= tSteady ? 'steady' : 'struggling';
+
+    if (filterTier && tier !== filterTier) continue;
+    const tpl = tmpls[tier];
+    if (!tpl) continue; // no template for this tier — skip
+
+    const subs = {
+      first_name: firstName,
+      full_name: fullName,
+      period,
+      grade_pct: gradePct === null ? '—' : gradePct.toFixed(1),
+      grade_letter: letterForPct(gradePct),
+      missing_count: missingItems.length,
+      missing_list: missingItems.length
+        ? missingItems.map(a => `• ${a.name}${a.max ? ` (${a.max} pts)` : ''}`).join('\n')
+        : '(none)',
+      missing_list_inline: missingItems.length
+        ? missingItems.map(a => a.name).join(', ')
+        : '(none)',
+      points_to_recover: pointsToRecover
+    };
+
+    messages.push({
+      name: fullName,
+      firstName,
+      period,
+      tier,
+      gradePct,
+      gradeLetter: letterForPct(gradePct),
+      subject: substitute(subjectTpl, subs),
+      body: substitute(tpl, subs)
+    });
+  }
+
+  lastMessages = messages;
+  renderSummary(messages);
+  renderMessages(messages);
+}
+
+function substitute(text, subs) {
+  return Object.entries(subs).reduce((acc, [k, v]) => acc.replaceAll(`{${k}}`, String(v)), text || '');
+}
+
+function renderSummary(messages) {
+  const summary = $('#summary');
+  const counts = { strong: 0, steady: 0, struggling: 0 };
+  for (const m of messages) counts[m.tier]++;
+  summary.innerHTML = `
+    <div><strong>${messages.length}</strong><span>Messages ready</span></div>
+    <div><strong>${counts.strong}</strong><span>Strong</span></div>
+    <div><strong>${counts.steady}</strong><span>Steady</span></div>
+    <div><strong>${counts.struggling}</strong><span>Struggling</span></div>
+  `;
+  summary.style.display = 'flex';
+}
+
+function renderMessages(messages) {
+  const area = $('#messages-area');
+  if (!messages.length) {
+    area.innerHTML = `<div class="empty-state">No messages generated. Make sure you have at least one template filled in for the tiers you want to reach.</div>`;
+    return;
+  }
+  area.innerHTML = messages.map((m, i) => {
+    const gradeCls = `grade-${m.gradeLetter === '—' ? 'NA' : m.gradeLetter}`;
+    const subjectRow = m.subject.trim()
+      ? `<div class="subject"><strong>Subject:</strong>${escHtml(m.subject)}</div>`
+      : '';
+    return `
+      <div class="msg-card" data-i="${i}">
+        <div class="head">
+          <div>
+            <div class="name">${escHtml(m.name)}</div>
+            <div class="meta">${m.period ? `Period ${escHtml(m.period)}` : ''}</div>
+          </div>
+          <div class="pills">
+            <span class="pill tier-${m.tier}">${capitalize(m.tier)}</span>
+            <span class="pill ${gradeCls}">${m.gradePct === null ? 'No grade' : m.gradePct.toFixed(1) + '% · ' + m.gradeLetter}</span>
+          </div>
+        </div>
+        ${subjectRow}
+        <div class="body">${escHtml(m.body)}</div>
+        <div class="actions-row">
+          <button class="primary small" data-action="copy-all" data-i="${i}">Copy subject + body</button>
+          <button class="secondary small" data-action="copy-body" data-i="${i}">Copy body only</button>
+          <span class="copy-confirm" data-i="${i}">Copied</span>
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  area.querySelectorAll('button[data-action]').forEach(b =>
+    b.addEventListener('click', () => {
+      const i = parseInt(b.dataset.i, 10);
+      const m = lastMessages[i];
+      const text = b.dataset.action === 'copy-all' && m.subject.trim()
+        ? `Subject: ${m.subject}\n\n${m.body}`
+        : m.body;
+      navigator.clipboard.writeText(text).then(() => {
+        const confirm = area.querySelector(`.copy-confirm[data-i="${i}"]`);
+        confirm.classList.add('show');
+        setTimeout(() => confirm.classList.remove('show'), 1400);
+      });
+    })
+  );
+}
+
+// ---------- Helpers ----------
+function isMissing(v, blankMissing) {
+  if (v === '' || v === null || v === undefined) return blankMissing;
+  const s = String(v).trim().toLowerCase();
+  if (s === '') return blankMissing;
+  if (['excused','exempt','ex','exc'].includes(s)) return false;
+  if (['missing','m','mi','mis'].includes(s)) return true;
+  if (!isNaN(parseFloat(s))) return false;
+  return false;
+}
+function isExcused(v) {
+  const s = String(v ?? '').trim().toLowerCase();
+  return ['excused','exempt','ex','exc'].includes(s);
+}
+function stripMaxPts(h) { return h.replace(/\s*\(\d+(?:\.\d+)?\)\s*$/, '').trim(); }
+function extractMax(h) { const m = h.match(/\((\d+(?:\.\d+)?)\)/); return m ? parseFloat(m[1]) : null; }
+function letterForPct(p) {
+  if (p === null || p === undefined) return '—';
+  if (p >= 90) return 'A';
+  if (p >= 80) return 'B';
+  if (p >= 70) return 'C';
+  if (p >= 60) return 'D';
+  return 'F';
+}
+function capitalize(s) { return s.charAt(0).toUpperCase() + s.slice(1); }
+function escHtml(s) { return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function escAttr(s) { return escHtml(s); }
+</script>
+
+</body>
+</html>

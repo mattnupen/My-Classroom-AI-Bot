@@ -1,0 +1,662 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Badges &amp; Certificates</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
+<style>
+  :root {
+    --ink: #111827;
+    --muted: #6b7280;
+    --line: #e5e7eb;
+    --accent: #2563eb;
+    --accent-soft: #eff6ff;
+    --good-soft: #ecfdf5;
+    --bg: #fafafa;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; background: var(--bg); color: var(--ink); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; }
+  .screen-only { display: block; }
+  @media print { .screen-only { display: none !important; } body { background: white; } }
+
+  header.app { background: white; border-bottom: 1px solid var(--line); padding: 22px 32px; }
+  header.app h1 { margin: 0 0 4px; font-size: 22px; }
+  header.app p { margin: 0; color: var(--muted); font-size: 13px; max-width: 740px; line-height: 1.5; }
+
+  main { max-width: 1100px; margin: 0 auto; padding: 24px 32px 80px; }
+
+  .step {
+    background: white;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 20px 24px;
+    margin-bottom: 18px;
+  }
+  .step h2 { margin: 0 0 12px; font-size: 13px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); }
+  .step .subtitle { margin: 0 0 14px; font-size: 13px; color: var(--muted); line-height: 1.5; }
+
+  .dropzone {
+    border: 2px dashed #d1d5db;
+    border-radius: 8px;
+    padding: 18px 16px;
+    text-align: center;
+    background: #fafafa;
+    cursor: pointer;
+    transition: 0.15s;
+    display: block;
+    flex: 1;
+  }
+  .dropzone:hover, .dropzone.dragover { border-color: var(--accent); background: var(--accent-soft); }
+  .dropzone strong { display: block; font-size: 14px; margin-bottom: 2px; }
+  .dropzone span { color: var(--muted); font-size: 12px; }
+  .dropzone input { display: none; }
+
+  .file-row { display: flex; gap: 14px; flex-wrap: wrap; }
+  .file-status { padding: 8px 12px; background: var(--good-soft); border: 1px solid #a7f3d0; border-radius: 6px; font-size: 12px; color: #065f46; margin-top: 8px; }
+  .file-status::before { content: "✓ "; font-weight: 700; }
+
+  label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 4px; font-weight: 500; }
+  select, input[type="text"], input[type="number"], textarea {
+    width: 100%;
+    padding: 8px 10px;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    font-size: 13px;
+    font-family: inherit;
+    background: white;
+    color: var(--ink);
+  }
+  select:focus, input:focus, textarea:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(37,99,235,0.15); }
+
+  button {
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 500;
+    padding: 8px 14px;
+    border-radius: 6px;
+    border: 1px solid transparent;
+    cursor: pointer;
+    transition: 0.1s;
+  }
+  button.primary { background: var(--accent); color: white; }
+  button.primary:hover { background: #1d4ed8; }
+  button.secondary { background: white; color: var(--ink); border-color: #d1d5db; }
+  button.secondary:hover { background: #f9fafb; }
+  button.small { padding: 4px 10px; font-size: 12px; }
+  button.danger { color: #b91c1c; }
+  button:disabled { opacity: 0.5; cursor: not-allowed; }
+  .actions { display: flex; gap: 10px; flex-wrap: wrap; }
+
+  /* Badge definitions */
+  .badge-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 10px; margin-bottom: 14px; }
+  .badge-def {
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 12px;
+    background: white;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    position: relative;
+  }
+  .badge-def .top { display: flex; align-items: center; gap: 8px; }
+  .badge-def .icon { font-size: 22px; line-height: 1; }
+  .badge-def .name { font-weight: 600; font-size: 14px; flex: 1; }
+  .badge-def .desc { font-size: 12px; color: var(--muted); line-height: 1.4; }
+  .badge-def .swatch { width: 14px; height: 14px; border-radius: 50%; border: 1.5px solid white; box-shadow: 0 0 0 1px var(--line); }
+  .badge-def button.remove { position: absolute; top: 8px; right: 8px; padding: 2px 6px; font-size: 11px; color: var(--muted); background: transparent; border: none; cursor: pointer; }
+  .badge-def button.remove:hover { color: #b91c1c; }
+
+  .add-badge-row { display: grid; grid-template-columns: 70px 1fr 60px 80px auto; gap: 8px; align-items: end; padding: 12px; background: #f9fafb; border: 1px dashed var(--line); border-radius: 8px; }
+  .add-badge-row label { margin-bottom: 2px; }
+
+  /* Award flow */
+  .award-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .roster-list {
+    max-height: 280px;
+    overflow-y: auto;
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    padding: 8px 10px;
+    background: white;
+  }
+  .roster-list .student-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 4px 6px;
+    border-radius: 4px;
+    font-size: 13px;
+  }
+  .roster-list .student-row:hover { background: #f9fafb; }
+  .roster-list .student-row label { color: var(--ink); font-size: 13px; margin: 0; cursor: pointer; flex: 1; font-weight: 400; }
+  .roster-list .student-row .period { color: var(--muted); font-size: 11px; }
+
+  .roster-filter { display: flex; gap: 8px; margin-bottom: 8px; }
+  .roster-filter input { flex: 1; }
+  .roster-filter select { max-width: 140px; }
+
+  /* Pending awards */
+  .pending-list { display: flex; flex-direction: column; gap: 6px; max-height: 280px; overflow-y: auto; }
+  .pending {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 7px 10px;
+    background: #f9fafb;
+    border-radius: 6px;
+    font-size: 13px;
+  }
+  .pending .who { flex: 1; }
+  .pending .what { color: var(--muted); font-size: 12px; }
+  .pending button { padding: 2px 8px; font-size: 11px; background: transparent; border: none; color: var(--muted); cursor: pointer; }
+  .pending button:hover { color: #b91c1c; }
+
+  /* Certificate sheet */
+  .cert-sheet { background: white; border: 1px solid var(--line); border-radius: 10px; padding: 24px; }
+  .certs {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+  }
+  .cert {
+    border: 4px solid var(--cert-color, #2563eb);
+    border-radius: 16px;
+    padding: 22px 26px;
+    background: white;
+    position: relative;
+    min-height: 280px;
+    display: flex;
+    flex-direction: column;
+    text-align: center;
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+  .cert::before, .cert::after {
+    content: "";
+    position: absolute;
+    width: 28px;
+    height: 28px;
+    border: 3px solid var(--cert-color, #2563eb);
+  }
+  .cert::before { top: -3px; left: -3px; border-right: none; border-bottom: none; border-radius: 14px 0 0 0; }
+  .cert::after { bottom: -3px; right: -3px; border-left: none; border-top: none; border-radius: 0 0 14px 0; }
+
+  .cert .badge-row { display: flex; align-items: center; justify-content: center; gap: 10px; margin-bottom: 8px; }
+  .cert .badge-icon { font-size: 36px; line-height: 1; }
+  .cert .badge-name { font-size: 18px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.08em; color: var(--cert-color, #2563eb); }
+  .cert .preamble { font-size: 13px; color: var(--muted); margin: 10px 0 4px; text-transform: uppercase; letter-spacing: 0.06em; }
+  .cert .student-name {
+    font-size: 28px;
+    font-weight: 700;
+    font-family: "Georgia", "Times New Roman", serif;
+    font-style: italic;
+    margin: 6px 0 14px;
+    color: var(--ink);
+  }
+  .cert .reason { font-size: 14px; line-height: 1.5; color: var(--ink); margin: 0 12px 14px; flex: 1; display: flex; align-items: center; justify-content: center; }
+  .cert .meta { font-size: 11px; color: var(--muted); margin-top: auto; display: flex; justify-content: space-between; gap: 12px; padding-top: 10px; border-top: 1px dashed var(--line); }
+  .cert .sig-line { margin-top: 6px; font-size: 11px; color: var(--muted); }
+  .cert .sig-line .line { display: inline-block; border-bottom: 1px solid var(--ink); width: 60%; margin-right: 6px; }
+
+  @page { size: letter portrait; margin: 0.4in; }
+  @media print {
+    main { max-width: none; margin: 0; padding: 0; }
+    .cert-sheet { border: none; padding: 0; }
+    .certs { gap: 16px; }
+    .cert { min-height: 320px; }
+  }
+
+  .summary { display: flex; gap: 20px; padding: 14px 18px; background: #f3f4f6; border-radius: 8px; margin-bottom: 18px; font-size: 13px; }
+  .summary > div strong { display: block; font-size: 22px; color: var(--ink); font-weight: 700; }
+  .summary > div span { color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; font-size: 11px; }
+
+  .state-banner { padding: 10px 14px; background: #fef3c7; border: 1px solid #fde68a; border-radius: 6px; font-size: 12px; color: #92400e; margin-bottom: 14px; }
+  .state-banner.loaded { background: var(--good-soft); border-color: #a7f3d0; color: #065f46; }
+</style>
+</head>
+<body>
+
+<header class="app screen-only">
+  <h1>Badges &amp; Certificates</h1>
+  <p>Define your badges, award them to students, print certificates. History of who got what is saved to a single <code>class-state.json</code> file you keep on your computer — outside the Cowork folder.</p>
+</header>
+
+<main>
+
+  <!-- STEP 1: State file -->
+  <section class="step screen-only" id="step-state">
+    <h2>Step 1 &mdash; Class state file</h2>
+    <p class="subtitle">One file holds your badge definitions, award history, and (eventually) data for other tools like Random Groups and Cold-Call. Save it somewhere safe — Documents, Drive, USB. <strong>Don't put it inside the Cowork folder.</strong></p>
+    <div class="file-row">
+      <label class="dropzone" id="dz-state">
+        <strong>Drop existing class-state.json</strong>
+        <span>or click to choose</span>
+        <input type="file" id="file-state" accept=".json">
+      </label>
+      <button class="secondary" id="btn-new-state" style="flex:0 0 auto;align-self:center;">Start a new state file</button>
+    </div>
+    <div id="state-banner" class="state-banner" style="display:none;"></div>
+  </section>
+
+  <!-- STEP 2: Roster -->
+  <section class="step screen-only" id="step-roster">
+    <h2>Step 2 &mdash; Class roster <span style="color:var(--muted);font-weight:400;text-transform:none;letter-spacing:0;font-size:12px;">(from gradebook export)</span></h2>
+    <label class="dropzone" id="dz-gradebook">
+      <strong>Drop gradebook CSV or XLSX</strong>
+      <span>Only the name and period columns are used. Nothing leaves your computer.</span>
+      <input type="file" id="file-gradebook" accept=".csv,.xlsx,.xls">
+    </label>
+    <div id="status-gradebook" class="file-status" style="display:none;"></div>
+  </section>
+
+  <!-- STEP 3: Badges -->
+  <section class="step screen-only" id="step-badges">
+    <h2>Step 3 &mdash; Define your badges</h2>
+    <p class="subtitle">Each badge has a name, description, icon (emoji), and color. Add or remove as you go. These save to your state file when you download it.</p>
+    <div class="badge-list" id="badge-list"></div>
+    <div class="add-badge-row">
+      <div>
+        <label>Icon</label>
+        <input type="text" id="new-icon" placeholder="🚀" maxlength="2">
+      </div>
+      <div>
+        <label>Name</label>
+        <input type="text" id="new-name" placeholder="Comeback Kid">
+      </div>
+      <div>
+        <label>Color</label>
+        <input type="color" id="new-color" value="#2563eb">
+      </div>
+      <div>
+        <label>&nbsp;</label>
+        <button class="primary" id="btn-add-badge">+ Add</button>
+      </div>
+      <div style="grid-column:1/-1;">
+        <label>Description (shown on the certificate)</label>
+        <input type="text" id="new-desc" placeholder="For making a comeback this week">
+      </div>
+    </div>
+    <div class="actions" style="margin-top:12px;">
+      <button class="secondary small" id="btn-load-defaults">Load 6 sample badges</button>
+    </div>
+  </section>
+
+  <!-- STEP 4: Award -->
+  <section class="step screen-only" id="step-award">
+    <h2>Step 4 &mdash; Award badges</h2>
+    <div class="award-row">
+      <div>
+        <label>Pick a badge to award</label>
+        <select id="award-badge"></select>
+        <div class="roster-filter" style="margin-top:10px;">
+          <input type="text" id="roster-search" placeholder="Search by name…">
+          <select id="roster-period"><option value="">All periods</option></select>
+        </div>
+        <div class="roster-list" id="roster-list">
+          <p style="color:var(--muted);text-align:center;font-size:13px;margin:14px 0;">Load a gradebook above to see students.</p>
+        </div>
+        <div class="actions" style="margin-top:10px;">
+          <button class="primary small" id="btn-add-pending">+ Add selected to award list</button>
+          <button class="secondary small" id="btn-clear-selection">Clear selection</button>
+        </div>
+      </div>
+      <div>
+        <label>Pending awards (will appear on certificates)</label>
+        <div class="pending-list" id="pending-list">
+          <p style="color:var(--muted);text-align:center;font-size:13px;margin:14px 0;">No awards queued yet.</p>
+        </div>
+        <div class="actions" style="margin-top:10px;">
+          <button class="primary" id="btn-generate">Generate certificates</button>
+          <button class="secondary small" id="btn-clear-pending">Clear all</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Output -->
+  <div id="summary" class="summary screen-only" style="display:none;"></div>
+
+  <section class="cert-sheet" id="cert-sheet" style="display:none;">
+    <div class="certs" id="certs"></div>
+  </section>
+
+  <!-- STEP 5: Save state -->
+  <section class="step screen-only" id="step-save" style="display:none;">
+    <h2>Step 5 &mdash; Save your updated state file</h2>
+    <p class="subtitle">Records the awards you just generated so they appear in your history next time. Save it back to wherever you keep <code>class-state.json</code>.</p>
+    <div class="actions">
+      <button class="primary" id="btn-save-state">Download updated class-state.json</button>
+      <button class="secondary" id="btn-print">Print certificates</button>
+    </div>
+  </section>
+
+</main>
+
+<script>
+let classState = null;        // { version, lastUpdated, badges: { definitions, awards }, ... }
+let roster = [];              // [{ name, period }]
+let pendingAwards = [];       // [{ studentName, period, badgeId, date }]
+
+const $ = sel => document.querySelector(sel);
+
+// ---------- Drop zones ----------
+setupDropzone('dz-state', 'file-state', f => loadStateFile(f));
+setupDropzone('dz-gradebook', 'file-gradebook', f => loadGradebook(f));
+
+function setupDropzone(zoneId, inputId, handler) {
+  const dz = document.getElementById(zoneId);
+  const inp = document.getElementById(inputId);
+  ['dragenter','dragover'].forEach(ev => dz.addEventListener(ev, e => { e.preventDefault(); dz.classList.add('dragover'); }));
+  ['dragleave','drop'].forEach(ev => dz.addEventListener(ev, e => { e.preventDefault(); dz.classList.remove('dragover'); }));
+  dz.addEventListener('drop', e => { const f = e.dataTransfer.files[0]; if (f) handler(f); });
+  inp.addEventListener('change', e => { const f = e.target.files[0]; if (f) handler(f); });
+}
+
+// ---------- State file ----------
+function loadStateFile(file) {
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const parsed = JSON.parse(e.target.result);
+      if (!parsed.version) throw new Error('Not a valid class-state file.');
+      classState = ensureSchema(parsed);
+      const banner = $('#state-banner');
+      banner.classList.add('loaded');
+      banner.style.display = 'block';
+      banner.innerHTML = `Loaded state file with <strong>${classState.badges.definitions.length}</strong> badge definitions and <strong>${classState.badges.awards.length}</strong> past awards.`;
+      renderBadgeList();
+      renderBadgeSelect();
+    } catch (err) {
+      const banner = $('#state-banner');
+      banner.classList.remove('loaded');
+      banner.style.display = 'block';
+      banner.style.background = '#fee2e2';
+      banner.style.borderColor = '#fecaca';
+      banner.style.color = '#991b1b';
+      banner.textContent = `Could not read this file: ${err.message}`;
+    }
+  };
+  reader.readAsText(file);
+}
+
+$('#btn-new-state').addEventListener('click', () => {
+  classState = ensureSchema({ version: 1 });
+  const banner = $('#state-banner');
+  banner.classList.add('loaded');
+  banner.style.display = 'block';
+  banner.innerHTML = 'New empty state file ready. Add badges below, award some, then download.';
+  renderBadgeList();
+  renderBadgeSelect();
+});
+
+function ensureSchema(s) {
+  return {
+    version: 1,
+    lastUpdated: s.lastUpdated || new Date().toISOString().slice(0, 10),
+    badges: {
+      definitions: (s.badges && s.badges.definitions) || [],
+      awards: (s.badges && s.badges.awards) || []
+    },
+    // future tool slots — preserved if present
+    groups: s.groups || { history: [], doNotPair: [] },
+    coldCall: s.coldCall || { history: [] }
+  };
+}
+
+// ---------- Gradebook -> roster ----------
+function loadGradebook(file) {
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const data = new Uint8Array(e.target.result);
+      const wb = XLSX.read(data, { type: 'array' });
+      const sheet = wb.Sheets[wb.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json(sheet, { defval: '' });
+      if (!rows.length) throw new Error('No rows found.');
+      const headers = Object.keys(rows[0]);
+      const nameCol = headers.find(h => /^(student|name|student name|full name)$/i.test(h.trim())) || headers[0];
+      const periodCol = headers.find(h => /(period|class|section|hour|block)/i.test(h));
+      roster = rows.map(r => ({
+        name: String(r[nameCol] || '').trim(),
+        period: periodCol ? String(r[periodCol] || '').trim() : ''
+      })).filter(s => s.name);
+      $('#status-gradebook').style.display = 'block';
+      $('#status-gradebook').textContent = `Loaded ${file.name} — ${roster.length} students.`;
+      renderRosterFilters();
+      renderRoster();
+    } catch (err) {
+      $('#status-gradebook').style.background = '#fee2e2';
+      $('#status-gradebook').style.color = '#991b1b';
+      $('#status-gradebook').style.display = 'block';
+      $('#status-gradebook').textContent = `Could not read this file: ${err.message}`;
+    }
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+function renderRosterFilters() {
+  const sel = $('#roster-period');
+  sel.innerHTML = '<option value="">All periods</option>';
+  [...new Set(roster.map(s => s.period).filter(Boolean))].sort()
+    .forEach(p => sel.insertAdjacentHTML('beforeend', `<option value="${escAttr(p)}">${escHtml(p)}</option>`));
+}
+
+['roster-search','roster-period'].forEach(id =>
+  document.getElementById(id).addEventListener('input', renderRoster)
+);
+
+function renderRoster() {
+  const wrap = $('#roster-list');
+  if (!roster.length) {
+    wrap.innerHTML = '<p style="color:var(--muted);text-align:center;font-size:13px;margin:14px 0;">Load a gradebook above to see students.</p>';
+    return;
+  }
+  const q = $('#roster-search').value.trim().toLowerCase();
+  const fp = $('#roster-period').value;
+  const list = roster.filter(s => {
+    if (q && !s.name.toLowerCase().includes(q)) return false;
+    if (fp && s.period !== fp) return false;
+    return true;
+  });
+  if (!list.length) { wrap.innerHTML = '<p style="color:var(--muted);text-align:center;font-size:13px;margin:14px 0;">No students match.</p>'; return; }
+  wrap.innerHTML = list.map((s, i) => `
+    <div class="student-row">
+      <input type="checkbox" id="rost-${escAttr(s.name)}-${escAttr(s.period)}" data-name="${escAttr(s.name)}" data-period="${escAttr(s.period)}">
+      <label for="rost-${escAttr(s.name)}-${escAttr(s.period)}">${escHtml(s.name)}</label>
+      ${s.period ? `<span class="period">${escHtml(s.period)}</span>` : ''}
+    </div>
+  `).join('');
+}
+
+// ---------- Badge definitions ----------
+function renderBadgeList() {
+  const wrap = $('#badge-list');
+  if (!classState || !classState.badges.definitions.length) {
+    wrap.innerHTML = '<p style="color:var(--muted);font-size:13px;grid-column:1/-1;">No badges yet. Add some below or load the samples.</p>';
+    return;
+  }
+  wrap.innerHTML = classState.badges.definitions.map(b => `
+    <div class="badge-def" data-id="${escAttr(b.id)}">
+      <button class="remove" data-id="${escAttr(b.id)}" title="Remove">✕</button>
+      <div class="top">
+        <span class="icon">${escHtml(b.icon || '★')}</span>
+        <span class="swatch" style="background:${escAttr(b.color || '#2563eb')};"></span>
+        <span class="name">${escHtml(b.name)}</span>
+      </div>
+      ${b.description ? `<div class="desc">${escHtml(b.description)}</div>` : ''}
+    </div>
+  `).join('');
+  wrap.querySelectorAll('button.remove').forEach(b => b.addEventListener('click', () => removeBadge(b.dataset.id)));
+}
+
+function renderBadgeSelect() {
+  const sel = $('#award-badge');
+  sel.innerHTML = '';
+  if (!classState || !classState.badges.definitions.length) {
+    sel.innerHTML = '<option value="">(no badges defined yet)</option>';
+    return;
+  }
+  for (const b of classState.badges.definitions) {
+    sel.insertAdjacentHTML('beforeend', `<option value="${escAttr(b.id)}">${escHtml(b.icon || '★')} ${escHtml(b.name)}</option>`);
+  }
+}
+
+$('#btn-add-badge').addEventListener('click', () => {
+  if (!classState) { alert('Start or load a class-state file first (Step 1).'); return; }
+  const name = $('#new-name').value.trim();
+  if (!name) return;
+  const id = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') + '-' + Math.random().toString(36).slice(2, 6);
+  classState.badges.definitions.push({
+    id,
+    name,
+    icon: $('#new-icon').value.trim() || '★',
+    color: $('#new-color').value,
+    description: $('#new-desc').value.trim()
+  });
+  $('#new-name').value = ''; $('#new-icon').value = ''; $('#new-desc').value = '';
+  renderBadgeList();
+  renderBadgeSelect();
+});
+
+function removeBadge(id) {
+  if (!confirm('Remove this badge definition? Past awards in your history are not affected.')) return;
+  classState.badges.definitions = classState.badges.definitions.filter(b => b.id !== id);
+  renderBadgeList();
+  renderBadgeSelect();
+}
+
+$('#btn-load-defaults').addEventListener('click', () => {
+  if (!classState) { alert('Start or load a class-state file first (Step 1).'); return; }
+  const defaults = [
+    { name: 'Comeback Kid',   icon: '🚀', color: '#2563eb', description: 'Made a strong comeback this week.' },
+    { name: 'Perfect Week',   icon: '⭐', color: '#059669', description: 'Turned in everything on time this week.' },
+    { name: 'Streak Master',  icon: '🔥', color: '#dc2626', description: 'Three or more weeks of consistent work.' },
+    { name: 'Class Helper',   icon: '🤝', color: '#7c3aed', description: 'Went out of the way to help a classmate.' },
+    { name: 'Big Idea',       icon: '💡', color: '#d97706', description: 'Brought an insight that changed the conversation.' },
+    { name: 'Revision Champ', icon: '✏️', color: '#0891b2', description: 'Took feedback and made the work better.' }
+  ];
+  for (const d of defaults) {
+    const id = d.name.toLowerCase().replace(/\s+/g, '-') + '-' + Math.random().toString(36).slice(2, 6);
+    classState.badges.definitions.push({ id, ...d });
+  }
+  renderBadgeList();
+  renderBadgeSelect();
+});
+
+// ---------- Award flow ----------
+$('#btn-add-pending').addEventListener('click', () => {
+  if (!classState) { alert('Start or load a class-state file first (Step 1).'); return; }
+  const badgeId = $('#award-badge').value;
+  if (!badgeId) { alert('Add at least one badge in Step 3.'); return; }
+  const checks = document.querySelectorAll('#roster-list input[type="checkbox"]:checked');
+  if (!checks.length) { alert('Select at least one student.'); return; }
+  const today = new Date().toISOString().slice(0, 10);
+  for (const c of checks) {
+    pendingAwards.push({
+      studentName: c.dataset.name,
+      period: c.dataset.period,
+      badgeId,
+      date: today
+    });
+    c.checked = false;
+  }
+  renderPending();
+});
+
+$('#btn-clear-selection').addEventListener('click', () => {
+  document.querySelectorAll('#roster-list input[type="checkbox"]').forEach(c => c.checked = false);
+});
+
+$('#btn-clear-pending').addEventListener('click', () => {
+  if (!pendingAwards.length) return;
+  if (!confirm('Clear all queued awards?')) return;
+  pendingAwards = [];
+  renderPending();
+});
+
+function renderPending() {
+  const wrap = $('#pending-list');
+  if (!pendingAwards.length) {
+    wrap.innerHTML = '<p style="color:var(--muted);text-align:center;font-size:13px;margin:14px 0;">No awards queued yet.</p>';
+    return;
+  }
+  wrap.innerHTML = pendingAwards.map((a, i) => {
+    const badge = classState.badges.definitions.find(b => b.id === a.badgeId);
+    return `
+      <div class="pending">
+        <span class="who">${escHtml(a.studentName)}${a.period ? ` <span class="what">· ${escHtml(a.period)}</span>` : ''}</span>
+        <span class="what">${badge ? `${escHtml(badge.icon || '★')} ${escHtml(badge.name)}` : a.badgeId}</span>
+        <button data-i="${i}" title="Remove">✕</button>
+      </div>
+    `;
+  }).join('');
+  wrap.querySelectorAll('button[data-i]').forEach(b =>
+    b.addEventListener('click', () => { pendingAwards.splice(parseInt(b.dataset.i, 10), 1); renderPending(); })
+  );
+}
+
+// ---------- Certificates ----------
+$('#btn-generate').addEventListener('click', generate);
+$('#btn-print').addEventListener('click', () => window.print());
+
+function generate() {
+  if (!pendingAwards.length) { alert('Queue at least one award first.'); return; }
+  const wrap = $('#certs');
+  wrap.innerHTML = pendingAwards.map(a => {
+    const badge = classState.badges.definitions.find(b => b.id === a.badgeId);
+    if (!badge) return '';
+    const dateStr = new Date(a.date + 'T00:00').toLocaleDateString(undefined, { month: 'long', day: 'numeric', year: 'numeric' });
+    return `
+      <div class="cert" style="--cert-color:${escAttr(badge.color || '#2563eb')};">
+        <div class="badge-row">
+          <span class="badge-icon">${escHtml(badge.icon || '★')}</span>
+          <span class="badge-name">${escHtml(badge.name)}</span>
+          <span class="badge-icon">${escHtml(badge.icon || '★')}</span>
+        </div>
+        <div class="preamble">presented to</div>
+        <div class="student-name">${escHtml(a.studentName)}</div>
+        <div class="reason">${escHtml(badge.description || '')}</div>
+        <div class="sig-line"><span class="line"></span>Teacher</div>
+        <div class="meta">
+          <span>${a.period ? 'Period ' + escHtml(a.period) : ''}</span>
+          <span>${escHtml(dateStr)}</span>
+        </div>
+      </div>
+    `;
+  }).join('');
+  $('#cert-sheet').style.display = 'block';
+  $('#summary').style.display = 'flex';
+  $('#summary').innerHTML = `
+    <div><strong>${pendingAwards.length}</strong><span>Certificates ready</span></div>
+    <div><strong>${new Set(pendingAwards.map(a => a.badgeId)).size}</strong><span>Different badges</span></div>
+    <div><strong>${new Set(pendingAwards.map(a => a.studentName)).size}</strong><span>Students recognized</span></div>
+  `;
+  $('#step-save').style.display = 'block';
+  $('#step-save').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+$('#btn-save-state').addEventListener('click', () => {
+  if (!classState) return;
+  // Commit pending awards to history
+  classState.badges.awards.push(...pendingAwards);
+  classState.lastUpdated = new Date().toISOString().slice(0, 10);
+  const blob = new Blob([JSON.stringify(classState, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'class-state.json';
+  a.click();
+  URL.revokeObjectURL(a.href);
+  pendingAwards = [];
+  renderPending();
+  alert('Saved. Your file has been updated with ' + classState.badges.awards.length + ' total awards on record.');
+});
+
+// ---------- Helpers ----------
+function escHtml(s) { return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function escAttr(s) { return escHtml(s); }
+</script>
+
+</body>
+</html>

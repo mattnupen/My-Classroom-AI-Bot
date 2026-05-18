@@ -1,0 +1,694 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Student Cards</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
+<style>
+  :root {
+    --ink: #1a1a1a;
+    --muted: #6b7280;
+    --line: #e5e7eb;
+    --accent: #2563eb;
+    --accent-soft: #eff6ff;
+    --warn: #b45309;
+    --warn-soft: #fef3c7;
+    --bg: #fafafa;
+    --card-bg: #ffffff;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; background: var(--bg); color: var(--ink); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; }
+  .screen-only { display: block; }
+  @media print { .screen-only { display: none !important; } }
+
+  header.app {
+    background: white;
+    border-bottom: 1px solid var(--line);
+    padding: 24px 32px;
+  }
+  header.app h1 { margin: 0 0 6px; font-size: 22px; }
+  header.app p { margin: 0; color: var(--muted); font-size: 14px; max-width: 720px; line-height: 1.5; }
+
+  main { max-width: 1100px; margin: 0 auto; padding: 24px 32px 80px; }
+
+  .step {
+    background: white;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 20px 24px;
+    margin-bottom: 18px;
+  }
+  .step h2 { margin: 0 0 14px; font-size: 15px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted); }
+  .step .body { font-size: 14px; }
+  .step.disabled { opacity: 0.5; pointer-events: none; }
+
+  .dropzone {
+    border: 2px dashed #d1d5db;
+    border-radius: 8px;
+    padding: 36px 20px;
+    text-align: center;
+    background: #fafafa;
+    cursor: pointer;
+    transition: 0.15s;
+  }
+  .dropzone:hover, .dropzone.dragover { border-color: var(--accent); background: var(--accent-soft); }
+  .dropzone strong { display: block; font-size: 16px; margin-bottom: 4px; }
+  .dropzone span { color: var(--muted); font-size: 13px; }
+  .dropzone input { display: none; }
+
+  .file-status {
+    margin-top: 12px;
+    padding: 10px 14px;
+    background: #ecfdf5;
+    border: 1px solid #a7f3d0;
+    border-radius: 6px;
+    font-size: 13px;
+    color: #065f46;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .file-status::before {
+    content: "✓";
+    font-weight: 700;
+    font-size: 15px;
+  }
+  .file-status.error::before { content: "✕"; }
+
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .row { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; }
+  label { display: block; font-size: 13px; color: var(--muted); margin-bottom: 4px; font-weight: 500; }
+  select, input[type="text"], textarea {
+    width: 100%;
+    padding: 8px 10px;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    font-size: 14px;
+    font-family: inherit;
+    background: white;
+    color: var(--ink);
+  }
+  textarea { min-height: 90px; resize: vertical; line-height: 1.5; }
+  select:focus, input:focus, textarea:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(37,99,235,0.15); }
+
+  .hint { font-size: 12px; color: var(--muted); margin-top: 4px; line-height: 1.5; }
+
+  .actions { display: flex; gap: 10px; margin-top: 12px; flex-wrap: wrap; }
+  button {
+    font-family: inherit;
+    font-size: 14px;
+    font-weight: 500;
+    padding: 9px 16px;
+    border-radius: 6px;
+    border: 1px solid transparent;
+    cursor: pointer;
+    transition: 0.1s;
+  }
+  button.primary { background: var(--accent); color: white; }
+  button.primary:hover { background: #1d4ed8; }
+  button.secondary { background: white; color: var(--ink); border-color: #d1d5db; }
+  button.secondary:hover { background: #f9fafb; }
+  button:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  .summary { display: flex; gap: 24px; flex-wrap: wrap; padding: 14px 18px; background: #f3f4f6; border-radius: 8px; margin-bottom: 18px; font-size: 13px; }
+  .summary div strong { display: block; font-size: 22px; color: var(--ink); font-weight: 600; margin-bottom: 2px; }
+  .summary div span { color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; font-size: 11px; }
+
+  /* Cards */
+  .cards-area { background: white; border: 1px solid var(--line); border-radius: 10px; padding: 24px; }
+  .cards-area h2 { margin: 0 0 16px; font-size: 15px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted); }
+  .cards { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+
+  .card {
+    border: 1.5px solid var(--ink);
+    border-radius: 10px;
+    padding: 18px 20px;
+    background: var(--card-bg);
+    page-break-inside: avoid;
+    break-inside: avoid;
+    display: flex;
+    flex-direction: column;
+    min-height: 320px;
+  }
+
+  .card .name { font-size: 22px; font-weight: 700; margin: 0 0 2px; }
+  .card .period { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 12px; }
+  .card .greeting { font-size: 13px; line-height: 1.5; margin-bottom: 12px; color: #374151; white-space: pre-wrap; }
+
+  .card .list-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); margin-bottom: 6px; }
+  .card ul.assignments { list-style: none; margin: 0 0 14px; padding: 0; }
+  .card ul.assignments li {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 0;
+    border-bottom: 1px dashed var(--line);
+    font-size: 14px;
+  }
+  .card ul.assignments li:last-child { border-bottom: none; }
+  .card ul.assignments li .check {
+    display: inline-block;
+    width: 16px;
+    height: 16px;
+    border: 1.5px solid var(--ink);
+    border-radius: 3px;
+    flex-shrink: 0;
+    background: white;
+  }
+  .card ul.assignments li .title { flex: 1; }
+  .card ul.assignments li .pts { color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+  .card .totals { margin-top: auto; padding-top: 10px; border-top: 1.5px solid var(--ink); display: flex; justify-content: space-between; font-size: 13px; font-weight: 600; }
+
+  .card .empty-msg {
+    padding: 14px 16px;
+    margin-bottom: 14px;
+    background: #f9fafb;
+    border-radius: 6px;
+    font-size: 14px;
+    line-height: 1.5;
+    color: #374151;
+    text-align: center;
+  }
+  .card .empty-msg strong { display: block; font-size: 15px; color: var(--ink); margin-bottom: 2px; }
+
+  .card .footer { margin-top: 12px; padding-top: 10px; font-size: 12px; color: var(--muted); font-style: italic; text-align: center; }
+
+  /* Full Progress mode */
+  .card .grade-pill {
+    display: inline-block;
+    padding: 4px 12px;
+    border-radius: 999px;
+    font-size: 13px;
+    font-weight: 700;
+    margin-bottom: 10px;
+    font-variant-numeric: tabular-nums;
+  }
+  .grade-A { background: #d1fae5; color: #065f46; }
+  .grade-B { background: #dbeafe; color: #1e40af; }
+  .grade-C { background: #fef3c7; color: #92400e; }
+  .grade-D { background: #fed7aa; color: #9a3412; }
+  .grade-F { background: #fee2e2; color: #991b1b; }
+  .grade-NA { background: #f3f4f6; color: #6b7280; }
+
+  .card table.scores {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12px;
+    margin-bottom: 12px;
+  }
+  .card table.scores th,
+  .card table.scores td {
+    padding: 5px 6px;
+    border-bottom: 1px dashed var(--line);
+    text-align: left;
+  }
+  .card table.scores th {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--muted);
+    font-weight: 600;
+    border-bottom-style: solid;
+  }
+  .card table.scores td.num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .card table.scores td.pct { font-weight: 600; }
+  .pct-hi { color: #065f46; }
+  .pct-mid { color: #1e40af; }
+  .pct-lo { color: #92400e; }
+  .pct-vlo { color: #991b1b; }
+  .pct-miss { color: #991b1b; font-style: italic; }
+  .card table.scores tr.missing td.title { color: #991b1b; }
+
+  /* Print */
+  @page { size: letter portrait; margin: 0.4in; }
+  @media print {
+    body { background: white; }
+    header.app, main > .step, .summary, .cards-area h2 { display: none; }
+    main { max-width: none; margin: 0; padding: 0; }
+    .cards-area { border: none; padding: 0; }
+    .cards { grid-template-columns: 1fr 1fr; gap: 12px; }
+    .card { box-shadow: none; min-height: 0; }
+  }
+</style>
+</head>
+<body>
+
+<header class="app screen-only">
+  <h1>Student Cards</h1>
+  <p>Drag in your gradebook export. Pick a card type — <strong>Missing Work</strong> for a focused to-do list, or <strong>Full Progress</strong> for a complete grade snapshot. Everything is read in your browser; nothing leaves your computer.</p>
+</header>
+
+<main>
+
+  <!-- STEP 1: Upload -->
+  <section class="step screen-only" id="step-upload">
+    <h2>Step 1 &mdash; Load your gradebook</h2>
+    <div class="body">
+      <label class="dropzone" id="dropzone">
+        <strong>Drop a CSV or XLSX file here</strong>
+        <span>or click to choose &middot; nothing leaves your computer</span>
+        <input type="file" id="file-input" accept=".csv,.xlsx,.xls">
+      </label>
+      <div id="file-status" class="file-status" style="display:none;"></div>
+      <p class="hint">Need to try it out? Use <code>sandbox/fictional-gradebook.csv</code> from this folder.</p>
+    </div>
+  </section>
+
+  <!-- STEP 2: Mapping -->
+  <section class="step screen-only disabled" id="step-mapping">
+    <h2>Step 2 &mdash; Confirm columns</h2>
+    <div class="body">
+      <div class="grid">
+        <div>
+          <label>Which column has the student's name?</label>
+          <select id="map-name"></select>
+        </div>
+        <div>
+          <label>Which column has the period or class?</label>
+          <select id="map-period"><option value="">(none)</option></select>
+        </div>
+      </div>
+      <div class="row" style="margin-top:14px;">
+        <label style="margin:0;"><input type="checkbox" id="treat-blank-as-missing"> Treat blank cells as missing (default: only cells marked "Missing")</label>
+      </div>
+      <p class="hint">Every other column is treated as an assignment. The score format is auto-detected: "Missing", "M", "MI" (any case) count as missing. "Excused", "Exempt", "EX" are skipped. Numbers count as present.</p>
+    </div>
+  </section>
+
+  <!-- STEP 3: Message -->
+  <section class="step screen-only disabled" id="step-message">
+    <h2>Step 3 &mdash; Personalize the message</h2>
+    <div class="body">
+      <label for="greeting-message">Greeting (top line of every card)</label>
+      <input type="text" id="greeting-message" value="Hey {name} — here's where you stand. Let's knock these out together.">
+      <p class="hint">Use <code>{name}</code> to insert the student's first name.</p>
+
+      <label for="student-message" style="margin-top:14px;">Student message (body of the card)</label>
+      <textarea id="student-message">Anything on this list can still earn full credit through the end of the unit. Check off each one as you turn it in.</textarea>
+      <p class="hint">This is the main note to students — turn-in policy, encouragement, due dates, whatever you want them to know.</p>
+
+      <label for="footer-message" style="margin-top:14px;">Footer (small text at the bottom)</label>
+      <input type="text" id="footer-message" value="Come find me during advisory if you want help getting started.">
+    </div>
+  </section>
+
+  <!-- STEP 4: Filter & generate -->
+  <section class="step screen-only disabled" id="step-generate">
+    <h2>Step 4 &mdash; Pick a card type and generate</h2>
+    <div class="body">
+      <div style="display:flex;gap:18px;margin-bottom:18px;padding:14px 16px;background:#f9fafb;border-radius:8px;flex-wrap:wrap;">
+        <label style="display:flex;align-items:flex-start;gap:8px;cursor:pointer;flex:1;min-width:220px;">
+          <input type="radio" name="card-mode" value="missing" checked style="margin-top:3px;">
+          <span><strong>Missing Work</strong><br><span style="font-size:12px;color:var(--muted);">One card per student showing only what they owe. Checkbox to-do format.</span></span>
+        </label>
+        <label style="display:flex;align-items:flex-start;gap:8px;cursor:pointer;flex:1;min-width:220px;">
+          <input type="radio" name="card-mode" value="progress" style="margin-top:3px;">
+          <span><strong>Full Progress</strong><br><span style="font-size:12px;color:var(--muted);">Complete grade snapshot: current grade plus every assignment with its score.</span></span>
+        </label>
+      </div>
+
+      <div class="grid">
+        <div>
+          <label>Filter by period</label>
+          <select id="filter-period"><option value="">All periods</option></select>
+        </div>
+        <div id="filter-missing-wrap">
+          <label>Show cards for students with</label>
+          <select id="filter-missing">
+            <option value="any">Any missing work</option>
+            <option value="1">1 or more missing</option>
+            <option value="2">2 or more missing</option>
+            <option value="3">3 or more missing</option>
+          </select>
+        </div>
+      </div>
+      <div class="row" style="margin-top:14px;" id="include-empty-wrap">
+        <label style="margin:0;"><input type="checkbox" id="include-empty"> Also print cards for students with <strong>no</strong> missing work (great-work cards)</label>
+      </div>
+      <div class="actions">
+        <button class="primary" id="btn-generate">Generate cards</button>
+        <button class="secondary" id="btn-print" disabled>Print &rarr;</button>
+        <button class="secondary" id="btn-reset">Start over</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- Summary -->
+  <div class="summary screen-only" id="summary" style="display:none;"></div>
+
+  <!-- Cards output -->
+  <section class="cards-area" id="cards-area" style="display:none;">
+    <h2 class="screen-only">Cards (ready to print)</h2>
+    <div class="cards" id="cards"></div>
+  </section>
+
+</main>
+
+<script>
+let workbookData = null;     // { headers: [...], rows: [{...}] }
+let nameColumn = null;
+let periodColumn = null;
+let assignmentColumns = [];  // [{header, max}]
+
+const $ = sel => document.querySelector(sel);
+const dropzone = $('#dropzone');
+const fileInput = $('#file-input');
+const fileStatus = $('#file-status');
+
+// ---------- File loading ----------
+['dragenter','dragover'].forEach(ev =>
+  dropzone.addEventListener(ev, e => { e.preventDefault(); dropzone.classList.add('dragover'); })
+);
+['dragleave','drop'].forEach(ev =>
+  dropzone.addEventListener(ev, e => { e.preventDefault(); dropzone.classList.remove('dragover'); })
+);
+dropzone.addEventListener('drop', e => {
+  const f = e.dataTransfer.files[0];
+  if (f) handleFile(f);
+});
+fileInput.addEventListener('change', e => {
+  const f = e.target.files[0];
+  if (f) handleFile(f);
+});
+
+function handleFile(file) {
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const data = new Uint8Array(e.target.result);
+      const wb = XLSX.read(data, { type: 'array' });
+      const sheet = wb.Sheets[wb.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json(sheet, { defval: '' });
+      if (!rows.length) throw new Error('No rows found in the first sheet.');
+      const headers = Object.keys(rows[0]);
+      workbookData = { headers, rows };
+      fileStatus.style.display = 'flex';
+      fileStatus.textContent = `Loaded ${file.name} — ${rows.length} students, ${headers.length} columns. Continue to Step 2 below.`;
+      setupMapping(headers);
+    } catch (err) {
+      fileStatus.style.display = 'block';
+      fileStatus.style.background = '#fee2e2';
+      fileStatus.style.color = '#991b1b';
+      fileStatus.style.borderColor = '#fecaca';
+      fileStatus.classList.add('error');
+      fileStatus.textContent = `Could not read this file: ${err.message}`;
+    }
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+// ---------- Column mapping ----------
+function setupMapping(headers) {
+  const nameSel = $('#map-name');
+  const periodSel = $('#map-period');
+  nameSel.innerHTML = '';
+  periodSel.innerHTML = '<option value="">(none)</option>';
+  headers.forEach(h => {
+    nameSel.insertAdjacentHTML('beforeend', `<option value="${escAttr(h)}">${escHtml(h)}</option>`);
+    periodSel.insertAdjacentHTML('beforeend', `<option value="${escAttr(h)}">${escHtml(h)}</option>`);
+  });
+
+  // Auto-detect
+  const guessName = headers.find(h => /^(student|name|student name|full name|last name)$/i.test(h.trim()))
+                 || headers[0];
+  const guessPeriod = headers.find(h => /(period|class|section|hour|block)/i.test(h));
+  nameSel.value = guessName;
+  if (guessPeriod) periodSel.value = guessPeriod;
+
+  document.querySelectorAll('.step.disabled').forEach(s => s.classList.remove('disabled'));
+  refreshPeriodFilter();
+}
+
+$('#map-name').addEventListener('change', refreshPeriodFilter);
+$('#map-period').addEventListener('change', refreshPeriodFilter);
+
+function refreshPeriodFilter() {
+  if (!workbookData) return;
+  nameColumn = $('#map-name').value;
+  periodColumn = $('#map-period').value || null;
+  const filterSel = $('#filter-period');
+  filterSel.innerHTML = '<option value="">All periods</option>';
+  if (periodColumn) {
+    const periods = [...new Set(workbookData.rows.map(r => String(r[periodColumn] || '').trim()).filter(Boolean))].sort();
+    periods.forEach(p => filterSel.insertAdjacentHTML('beforeend', `<option value="${escAttr(p)}">${escHtml(p)}</option>`));
+  }
+}
+
+// ---------- Generation ----------
+$('#btn-generate').addEventListener('click', generateCards);
+$('#btn-reset').addEventListener('click', () => location.reload());
+$('#btn-print').addEventListener('click', () => window.print());
+
+document.querySelectorAll('input[name="card-mode"]').forEach(r =>
+  r.addEventListener('change', () => {
+    const mode = currentMode();
+    $('#filter-missing-wrap').style.display = mode === 'missing' ? '' : 'none';
+    $('#include-empty-wrap').style.display = mode === 'missing' ? '' : 'none';
+  })
+);
+function currentMode() {
+  return document.querySelector('input[name="card-mode"]:checked').value;
+}
+
+function generateCards() {
+  if (!workbookData) return;
+  nameColumn = $('#map-name').value;
+  periodColumn = $('#map-period').value || null;
+
+  assignmentColumns = workbookData.headers
+    .filter(h => h !== nameColumn && h !== periodColumn)
+    .map(h => {
+      const m = h.match(/\((\d+(?:\.\d+)?)\)/);
+      return { header: h, max: m ? parseFloat(m[1]) : null };
+    });
+
+  const mode = currentMode();
+  const treatBlankMissing = $('#treat-blank-as-missing').checked;
+  const filterPeriod = $('#filter-period').value;
+
+  const filteredRows = workbookData.rows.filter(r => {
+    if (filterPeriod && periodColumn && String(r[periodColumn] || '').trim() !== filterPeriod) return false;
+    return true;
+  });
+
+  // Build a rich per-student object once; both modes can use it
+  const studentCards = filteredRows.map(r => {
+    const scores = assignmentColumns.map(a => {
+      const v = r[a.header];
+      const excused = isExcused(v);
+      const missing = !excused && isMissing(v, treatBlankMissing);
+      const num = parseFloat(String(v).trim());
+      const score = (!missing && !excused && !isNaN(num)) ? num : null;
+      const pct = (score !== null && a.max) ? (score / a.max) * 100 : null;
+      return { a, score, missing, excused, pct, raw: v };
+    });
+    const missing = scores.filter(s => s.missing).map(s => s.a);
+    const earned = scores.reduce((acc, s) => acc + (s.score ?? 0), 0);
+    const possible = scores.filter(s => !s.excused).reduce((acc, s) => acc + (s.a.max ?? 0), 0);
+    const gradePct = possible > 0 ? (earned / possible) * 100 : null;
+    return {
+      name: String(r[nameColumn] || '').trim(),
+      period: periodColumn ? String(r[periodColumn] || '').trim() : '',
+      missing,
+      scores,
+      gradePct
+    };
+  });
+
+  let shown;
+  if (mode === 'missing') {
+    const filterThreshold = $('#filter-missing').value;
+    const includeEmpty = $('#include-empty').checked;
+    const minMissing = filterThreshold === 'any' ? 1 : parseInt(filterThreshold, 10);
+    shown = studentCards.filter(s => {
+      if (s.missing.length === 0) return includeEmpty;
+      return s.missing.length >= minMissing;
+    });
+  } else {
+    shown = studentCards;
+  }
+
+  renderSummary(studentCards, shown, mode);
+  renderCards(shown, mode);
+  $('#btn-print').disabled = shown.length === 0;
+}
+
+function isExcused(v) {
+  const s = String(v ?? '').trim().toLowerCase();
+  return ['excused','exempt','ex','exc'].includes(s);
+}
+
+function isMissing(v, blankIsMissing) {
+  if (v === '' || v === null || v === undefined) return blankIsMissing;
+  const s = String(v).trim().toLowerCase();
+  if (s === '') return blankIsMissing;
+  if (['excused','exempt','ex','exc'].includes(s)) return false;
+  if (['missing','m','mi','mis'].includes(s)) return true;
+  const n = parseFloat(s);
+  if (!isNaN(n)) return false; // a numeric score = present
+  return false; // unknown string = treat as present (safer)
+}
+
+function renderSummary(all, shown, mode) {
+  const summary = $('#summary');
+  if (mode === 'missing') {
+    const totalMissing = shown.reduce((acc, s) => acc + s.missing.length, 0);
+    const studentsAffected = shown.filter(s => s.missing.length > 0).length;
+    summary.innerHTML = `
+      <div><strong>${all.length}</strong><span>Students in selection</span></div>
+      <div><strong>${shown.length}</strong><span>Cards to print</span></div>
+      <div><strong>${studentsAffected}</strong><span>With missing work</span></div>
+      <div><strong>${totalMissing}</strong><span>Total missing items</span></div>
+    `;
+  } else {
+    const withGrade = shown.filter(s => s.gradePct !== null);
+    const avg = withGrade.length ? withGrade.reduce((a, s) => a + s.gradePct, 0) / withGrade.length : null;
+    summary.innerHTML = `
+      <div><strong>${shown.length}</strong><span>Progress sheets</span></div>
+      <div><strong>${avg !== null ? avg.toFixed(1) + '%' : '—'}</strong><span>Class average</span></div>
+      <div><strong>${shown.filter(s => s.gradePct !== null && s.gradePct >= 90).length}</strong><span>At A</span></div>
+      <div><strong>${shown.filter(s => s.gradePct !== null && s.gradePct < 60).length}</strong><span>Below 60%</span></div>
+    `;
+  }
+  summary.style.display = 'flex';
+}
+
+function renderCards(students, mode) {
+  const wrap = $('#cards-area');
+  const grid = $('#cards');
+  if (students.length === 0) {
+    grid.innerHTML = '<p style="color:var(--muted);grid-column:1/-1;text-align:center;">No students match these filters.</p>';
+    wrap.style.display = 'block';
+    return;
+  }
+  const greetingTpl = $('#greeting-message').value;
+  const bodyTpl = $('#student-message').value;
+  const footerTpl = $('#footer-message').value;
+  const renderer = mode === 'progress' ? progressCardHtml : cardHtml;
+  grid.innerHTML = students.map(s => renderer(s, greetingTpl, bodyTpl, footerTpl)).join('');
+  wrap.style.display = 'block';
+}
+
+function progressCardHtml(s, greetingTpl, bodyTpl, footerTpl) {
+  const firstName = (s.name.split(/[, ]+/)[0] || s.name);
+  const fill = t => t.replaceAll('{name}', firstName);
+  const greeting = fill(greetingTpl);
+  const body = fill(bodyTpl);
+  const footer = fill(footerTpl);
+
+  const gradeLetter = letterForPct(s.gradePct);
+  const gradeClass = gradeLetter === '—' ? 'grade-NA' : `grade-${gradeLetter}`;
+  const gradeText = s.gradePct === null
+    ? 'No graded work yet'
+    : `${s.gradePct.toFixed(1)}% · ${gradeLetter}`;
+
+  const rows = s.scores.map(sc => {
+    if (sc.excused) {
+      return `<tr><td class="title">${escHtml(stripMaxPts(sc.a.header))}</td><td class="num">Excused</td><td class="num pct">—</td></tr>`;
+    }
+    if (sc.missing) {
+      return `<tr class="missing"><td class="title">${escHtml(stripMaxPts(sc.a.header))}</td><td class="num">—</td><td class="num pct pct-miss">Missing</td></tr>`;
+    }
+    if (sc.score === null) {
+      return `<tr><td class="title">${escHtml(stripMaxPts(sc.a.header))}</td><td class="num">${escHtml(sc.raw)}</td><td class="num pct">—</td></tr>`;
+    }
+    const pctCls = sc.pct === null ? '' : sc.pct >= 90 ? 'pct-hi' : sc.pct >= 75 ? 'pct-mid' : sc.pct >= 60 ? 'pct-lo' : 'pct-vlo';
+    const scoreText = sc.a.max ? `${sc.score}/${sc.a.max}` : `${sc.score}`;
+    return `<tr><td class="title">${escHtml(stripMaxPts(sc.a.header))}</td><td class="num">${scoreText}</td><td class="num pct ${pctCls}">${sc.pct === null ? '—' : Math.round(sc.pct) + '%'}</td></tr>`;
+  }).join('');
+
+  return `
+    <div class="card">
+      <div class="name">${escHtml(s.name)}</div>
+      ${s.period ? `<div class="period">${escHtml(s.period)}</div>` : ''}
+      <div><span class="grade-pill ${gradeClass}">Current grade: ${gradeText}</span></div>
+      <div class="greeting">${escHtml(greeting)}</div>
+      <table class="scores">
+        <thead><tr><th>Assignment</th><th style="text-align:right;">Score</th><th style="text-align:right;">%</th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+      ${body ? `<div class="greeting" style="margin-top:auto;margin-bottom:0;">${escHtml(body)}</div>` : '<div style="margin-top:auto;"></div>'}
+      <div class="footer">${escHtml(footer)}</div>
+    </div>
+  `;
+}
+
+function letterForPct(p) {
+  if (p === null || p === undefined) return '—';
+  if (p >= 90) return 'A';
+  if (p >= 80) return 'B';
+  if (p >= 70) return 'C';
+  if (p >= 60) return 'D';
+  return 'F';
+}
+
+function cardHtml(s, greetingTpl, bodyTpl, footerTpl) {
+  const firstName = (s.name.split(/[, ]+/)[0] || s.name);
+  const fill = t => t.replaceAll('{name}', firstName);
+  const greeting = fill(greetingTpl);
+  const body = fill(bodyTpl);
+  const footer = fill(footerTpl);
+
+  if (s.missing.length === 0) {
+    return `
+      <div class="card">
+        <div class="name">${escHtml(s.name)}</div>
+        ${s.period ? `<div class="period">${escHtml(s.period)}</div>` : ''}
+        <div class="greeting">${escHtml(greeting)}</div>
+        <div class="list-label">Missing</div>
+        <div class="empty-msg"><strong>Nothing!</strong>You have no missing assignments. Keep up the great work!</div>
+        <div class="totals">
+          <span>0 items</span>
+          <span>All caught up</span>
+        </div>
+        ${body ? `<div class="greeting" style="margin-top:10px;margin-bottom:0;">${escHtml(body)}</div>` : ''}
+        <div class="footer">${escHtml(footer)}</div>
+      </div>
+    `;
+  }
+
+  const items = s.missing.map(a => `
+    <li>
+      <span class="check"></span>
+      <span class="title">${escHtml(stripMaxPts(a.header))}</span>
+      <span class="pts">${a.max !== null ? `${a.max} pts` : ''}</span>
+    </li>
+  `).join('');
+
+  const totalPts = s.missing.reduce((acc, a) => acc + (a.max || 0), 0);
+  const showPts = s.missing.some(a => a.max !== null);
+
+  return `
+    <div class="card">
+      <div class="name">${escHtml(s.name)}</div>
+      ${s.period ? `<div class="period">${escHtml(s.period)}</div>` : ''}
+      <div class="greeting">${escHtml(greeting)}</div>
+      <div class="list-label">Missing</div>
+      <ul class="assignments">${items}</ul>
+      <div class="totals">
+        <span>${s.missing.length} ${s.missing.length === 1 ? 'item' : 'items'}</span>
+        ${showPts ? `<span>${totalPts} pts on the table</span>` : ''}
+      </div>
+      ${body ? `<div class="greeting" style="margin-top:10px;margin-bottom:0;">${escHtml(body)}</div>` : ''}
+      <div class="footer">${escHtml(footer)}</div>
+    </div>
+  `;
+}
+
+function stripMaxPts(h) {
+  return h.replace(/\s*\(\d+(?:\.\d+)?\)\s*$/, '').trim();
+}
+
+// ---------- Helpers ----------
+function escHtml(s) {
+  return String(s ?? '').replace(/[&<>"']/g, c => ({
+    '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
+  }[c]));
+}
+function escAttr(s) { return escHtml(s); }
+</script>
+
+</body>
+</html>

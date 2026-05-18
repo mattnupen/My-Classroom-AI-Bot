@@ -1,0 +1,38 @@
+# Legacy reference material — never upload to GitHub
+_legacy-reference/
+
+# macOS
+.DS_Store
+
+# Local sandbox / scratch
+sandbox/
+
+# Local Claude Code config (per-user permissions, etc.)
+.claude/settings.local.json
+
+# Superpowers ephemeral session state (brainstorm servers, logs, PIDs)
+.superpowers/brainstorm/
+
+# Environment / secrets
+.env
+.env.*
+!.env.example
+
+# Editor / OS junk
+*.swp
+*.swo
+Thumbs.db
+
+# Node
+node_modules/
+npm-debug.log*
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+
+# Logs
+*.log

@@ -1,0 +1,560 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Class Pulse</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
+<style>
+  :root {
+    --ink: #1a1a1a;
+    --muted: #6b7280;
+    --line: #e5e7eb;
+    --accent: #2563eb;
+    --accent-soft: #eff6ff;
+    --warn: #b45309;
+    --warn-soft: #fef3c7;
+    --good: #065f46;
+    --good-soft: #ecfdf5;
+    --bad: #991b1b;
+    --bad-soft: #fee2e2;
+    --bg: #fafafa;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; background: var(--bg); color: var(--ink); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; }
+
+  header.app {
+    background: white;
+    border-bottom: 1px solid var(--line);
+    padding: 24px 32px;
+  }
+  header.app h1 { margin: 0 0 6px; font-size: 22px; }
+  header.app p { margin: 0; color: var(--muted); font-size: 14px; max-width: 760px; line-height: 1.5; }
+
+  main { max-width: 1000px; margin: 0 auto; padding: 24px 32px 80px; }
+
+  .step {
+    background: white;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 20px 24px;
+    margin-bottom: 18px;
+  }
+  .step h2 { margin: 0 0 14px; font-size: 15px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted); }
+  .step.disabled { opacity: 0.5; pointer-events: none; }
+
+  .dropzone {
+    border: 2px dashed #d1d5db;
+    border-radius: 8px;
+    padding: 28px 20px;
+    text-align: center;
+    background: #fafafa;
+    cursor: pointer;
+    transition: 0.15s;
+    display: block;
+  }
+  .dropzone:hover, .dropzone.dragover { border-color: var(--accent); background: var(--accent-soft); }
+  .dropzone strong { display: block; font-size: 15px; margin-bottom: 4px; }
+  .dropzone span { color: var(--muted); font-size: 13px; }
+  .dropzone input { display: none; }
+
+  .file-status {
+    margin-top: 12px;
+    padding: 10px 14px;
+    background: #ecfdf5;
+    border: 1px solid #a7f3d0;
+    border-radius: 6px;
+    font-size: 13px;
+    color: var(--good);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .file-status::before { content: "✓"; font-weight: 700; font-size: 15px; }
+  .file-status.error { background: var(--bad-soft); border-color: #fecaca; color: var(--bad-soft); color: var(--bad); }
+  .file-status.error::before { content: "✕"; }
+
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
+  label { display: block; font-size: 13px; color: var(--muted); margin-bottom: 4px; font-weight: 500; }
+  select, input[type="text"], input[type="number"], textarea {
+    width: 100%;
+    padding: 8px 10px;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    font-size: 14px;
+    font-family: inherit;
+    background: white;
+    color: var(--ink);
+  }
+  select:focus, input:focus, textarea:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(37,99,235,0.15); }
+  .hint { font-size: 12px; color: var(--muted); margin-top: 6px; line-height: 1.5; }
+
+  .actions { display: flex; gap: 10px; margin-top: 14px; flex-wrap: wrap; }
+  button {
+    font-family: inherit;
+    font-size: 14px;
+    font-weight: 500;
+    padding: 9px 16px;
+    border-radius: 6px;
+    border: 1px solid transparent;
+    cursor: pointer;
+    transition: 0.1s;
+  }
+  button.primary { background: var(--accent); color: white; }
+  button.primary:hover { background: #1d4ed8; }
+  button.secondary { background: white; color: var(--ink); border-color: #d1d5db; }
+  button.secondary:hover { background: #f9fafb; }
+  button:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  .output-area {
+    background: white;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 22px 24px;
+    margin-bottom: 18px;
+  }
+  .output-area h2 { margin: 0 0 6px; font-size: 15px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted); }
+  .output-area .subtitle { margin: 0 0 14px; font-size: 13px; color: var(--muted); }
+  .output-block {
+    background: #f9fafb;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 16px 18px;
+    font-family: "SF Mono", Menlo, Consolas, monospace;
+    font-size: 13px;
+    line-height: 1.7;
+    color: var(--ink);
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    margin-bottom: 12px;
+  }
+  .output-block.prose { font-family: inherit; font-size: 14px; line-height: 1.65; }
+
+  .privacy-banner {
+    background: var(--good-soft);
+    border-left: 3px solid var(--good);
+    padding: 10px 14px;
+    margin-bottom: 16px;
+    font-size: 13px;
+    color: var(--good);
+    border-radius: 0 6px 6px 0;
+  }
+  .privacy-banner strong { font-weight: 700; }
+
+  .copy-confirm { color: var(--good); font-size: 12px; font-weight: 600; margin-left: 10px; opacity: 0; transition: opacity 0.2s; }
+  .copy-confirm.show { opacity: 1; }
+
+  .pill { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 11px; font-weight: 600; }
+  .pill.snapshot { background: var(--accent-soft); color: #1e40af; }
+</style>
+</head>
+<body>
+
+<header class="app">
+  <h1>Class Pulse</h1>
+  <p>Drop in your gradebook. The tool produces a paste-ready summary of your class state — <strong>aggregate only</strong>, no per-student rows, no names, no IDs. You can drop this summary into Claude (or anywhere) without worrying about student privacy.</p>
+</header>
+
+<main>
+
+  <div class="privacy-banner">
+    <strong>What this tool does NOT include in its output:</strong> student names, student IDs, individual grades, individual missing-work lists, or anything that could be linked back to a specific student. Only class-level counts and tier movements.
+  </div>
+
+  <!-- STEP 1: Upload current -->
+  <section class="step" id="step-current">
+    <h2>Step 1 &mdash; This week's gradebook</h2>
+    <label class="dropzone" id="dz-current">
+      <strong>Drop the CSV or XLSX here</strong>
+      <span>or click to choose &middot; nothing leaves your computer</span>
+      <input type="file" id="file-current" accept=".csv,.xlsx,.xls">
+    </label>
+    <div id="status-current" class="file-status" style="display:none;"></div>
+  </section>
+
+  <!-- STEP 2: Mapping -->
+  <section class="step disabled" id="step-mapping">
+    <h2>Step 2 &mdash; Confirm columns</h2>
+    <div class="grid-2">
+      <div>
+        <label>Column with the student's name</label>
+        <select id="map-name"></select>
+      </div>
+      <div>
+        <label>Column with the period or class</label>
+        <select id="map-period"><option value="">(none)</option></select>
+      </div>
+    </div>
+    <p class="hint">Names are used only to count students. They never appear in the output. Period is what we group the summary by.</p>
+  </section>
+
+  <!-- STEP 3: Tiers -->
+  <section class="step disabled" id="step-tiers">
+    <h2>Step 3 &mdash; Tier thresholds</h2>
+    <p class="hint" style="margin-top:0;margin-bottom:10px;">A student is placed in a tier based on how many assignments they're missing.</p>
+    <div class="grid-3">
+      <div>
+        <label>Strong (missing this many or fewer)</label>
+        <input type="number" id="threshold-strong" value="0" min="0">
+      </div>
+      <div>
+        <label>Steady (up to this many)</label>
+        <input type="number" id="threshold-steady" value="2" min="0">
+      </div>
+      <div>
+        <label>Struggling (this many or more)</label>
+        <input type="number" id="threshold-struggling" value="3" min="0" readonly style="background:#f9fafb;">
+      </div>
+    </div>
+    <div style="margin-top:14px;">
+      <label style="display:inline;font-size:13px;color:var(--ink);"><input type="checkbox" id="treat-blank-as-missing"> Treat blank cells as missing (default: only cells marked "Missing")</label>
+    </div>
+  </section>
+
+  <!-- STEP 4: Optional previous snapshot -->
+  <section class="step disabled" id="step-previous">
+    <h2>Step 4 &mdash; Compare to last snapshot <span class="pill snapshot">optional</span></h2>
+    <label class="dropzone" id="dz-previous">
+      <strong>Drop a previous <code>class-pulse-snapshot.json</code> here</strong>
+      <span>or skip this step if you don't have one yet</span>
+      <input type="file" id="file-previous" accept=".json">
+    </label>
+    <div id="status-previous" class="file-status" style="display:none;"></div>
+    <p class="hint">If you load a previous snapshot, the output will show movement (e.g., "Strong: 6 → 8 (+2)"). Without one, you'll just see this week's numbers.</p>
+  </section>
+
+  <!-- STEP 5: Generate -->
+  <section class="step disabled" id="step-generate">
+    <h2>Step 5 &mdash; Generate the pulse</h2>
+    <div class="actions">
+      <button class="primary" id="btn-generate">Generate</button>
+      <button class="secondary" id="btn-reset">Start over</button>
+    </div>
+  </section>
+
+  <!-- Output -->
+  <div id="output-wrap" style="display:none;">
+
+    <div class="output-area">
+      <h2>Structured summary <button class="secondary" style="float:right;padding:4px 10px;font-size:12px;" id="btn-copy-structured">Copy</button><span class="copy-confirm" id="confirm-structured">Copied</span></h2>
+      <p class="subtitle">Paste-ready for Claude or any other tool.</p>
+      <pre class="output-block" id="output-structured"></pre>
+    </div>
+
+    <div class="output-area">
+      <h2>Prose paragraph <button class="secondary" style="float:right;padding:4px 10px;font-size:12px;" id="btn-copy-prose">Copy</button><span class="copy-confirm" id="confirm-prose">Copied</span></h2>
+      <p class="subtitle">Same information, written out as a natural paragraph.</p>
+      <div class="output-block prose" id="output-prose"></div>
+    </div>
+
+    <div class="output-area">
+      <h2>Save this week's snapshot</h2>
+      <p class="subtitle">Download a small JSON file. Drop it in next week's Step 4 to see the week-over-week movement. Save it anywhere — Documents, Drive, USB stick. <strong>Don't save it inside the Cowork folder.</strong></p>
+      <button class="primary" id="btn-save-snapshot">Download snapshot</button>
+    </div>
+
+  </div>
+
+</main>
+
+<script>
+let currentData = null;
+let previousSnapshot = null;
+let nameColumn = null;
+let periodColumn = null;
+let assignmentColumns = [];
+let lastSnapshot = null;
+
+const $ = sel => document.querySelector(sel);
+
+// ---------- Drop zones ----------
+setupDropzone('dz-current', 'file-current', f => loadGradebook(f, 'current'));
+setupDropzone('dz-previous', 'file-previous', f => loadPreviousSnapshot(f));
+
+function setupDropzone(zoneId, inputId, handler) {
+  const dz = document.getElementById(zoneId);
+  const inp = document.getElementById(inputId);
+  ['dragenter','dragover'].forEach(ev =>
+    dz.addEventListener(ev, e => { e.preventDefault(); dz.classList.add('dragover'); })
+  );
+  ['dragleave','drop'].forEach(ev =>
+    dz.addEventListener(ev, e => { e.preventDefault(); dz.classList.remove('dragover'); })
+  );
+  dz.addEventListener('drop', e => {
+    const f = e.dataTransfer.files[0];
+    if (f) handler(f);
+  });
+  inp.addEventListener('change', e => {
+    const f = e.target.files[0];
+    if (f) handler(f);
+  });
+}
+
+function loadGradebook(file, which) {
+  const statusEl = $('#status-current');
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const data = new Uint8Array(e.target.result);
+      const wb = XLSX.read(data, { type: 'array' });
+      const sheet = wb.Sheets[wb.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json(sheet, { defval: '' });
+      if (!rows.length) throw new Error('No rows found in the first sheet.');
+      const headers = Object.keys(rows[0]);
+      currentData = { headers, rows };
+      statusEl.classList.remove('error');
+      statusEl.style.display = 'flex';
+      statusEl.textContent = `Loaded ${file.name} — ${rows.length} students, ${headers.length} columns.`;
+      setupMapping(headers);
+      enableSteps();
+    } catch (err) {
+      statusEl.classList.add('error');
+      statusEl.style.display = 'flex';
+      statusEl.textContent = `Could not read this file: ${err.message}`;
+    }
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+function loadPreviousSnapshot(file) {
+  const statusEl = $('#status-previous');
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const parsed = JSON.parse(e.target.result);
+      if (!parsed.periods || !parsed.date) throw new Error('Not a valid snapshot file.');
+      previousSnapshot = parsed;
+      statusEl.classList.remove('error');
+      statusEl.style.display = 'flex';
+      statusEl.textContent = `Loaded snapshot from ${parsed.date}. Movement will be shown in the output.`;
+    } catch (err) {
+      statusEl.classList.add('error');
+      statusEl.style.display = 'flex';
+      statusEl.textContent = `Could not read this snapshot: ${err.message}`;
+    }
+  };
+  reader.readAsText(file);
+}
+
+// ---------- Mapping ----------
+function setupMapping(headers) {
+  const nameSel = $('#map-name');
+  const periodSel = $('#map-period');
+  nameSel.innerHTML = '';
+  periodSel.innerHTML = '<option value="">(none)</option>';
+  headers.forEach(h => {
+    const opt = `<option value="${escAttr(h)}">${escHtml(h)}</option>`;
+    nameSel.insertAdjacentHTML('beforeend', opt);
+    periodSel.insertAdjacentHTML('beforeend', opt);
+  });
+  const guessName = headers.find(h => /^(student|name|student name|full name|last name)$/i.test(h.trim())) || headers[0];
+  const guessPeriod = headers.find(h => /(period|class|section|hour|block)/i.test(h));
+  nameSel.value = guessName;
+  if (guessPeriod) periodSel.value = guessPeriod;
+}
+
+function enableSteps() {
+  document.querySelectorAll('.step.disabled').forEach(s => s.classList.remove('disabled'));
+}
+
+// Sync struggling threshold (steady + 1)
+$('#threshold-steady').addEventListener('input', () => {
+  const steady = parseInt($('#threshold-steady').value, 10) || 0;
+  $('#threshold-struggling').value = steady + 1;
+});
+
+// ---------- Generate ----------
+$('#btn-generate').addEventListener('click', generate);
+$('#btn-reset').addEventListener('click', () => location.reload());
+$('#btn-save-snapshot').addEventListener('click', saveSnapshot);
+
+$('#btn-copy-structured').addEventListener('click', () => copyText($('#output-structured').textContent, 'confirm-structured'));
+$('#btn-copy-prose').addEventListener('click', () => copyText($('#output-prose').textContent, 'confirm-prose'));
+
+function generate() {
+  if (!currentData) return;
+  nameColumn = $('#map-name').value;
+  periodColumn = $('#map-period').value || null;
+
+  assignmentColumns = currentData.headers
+    .filter(h => h !== nameColumn && h !== periodColumn)
+    .map(h => ({ header: h, name: stripMaxPts(h) }));
+
+  const treatBlankMissing = $('#treat-blank-as-missing').checked;
+  const tStrong = parseInt($('#threshold-strong').value, 10);
+  const tSteady = parseInt($('#threshold-steady').value, 10);
+
+  // Group rows by period
+  const periods = {};
+  for (const r of currentData.rows) {
+    const p = periodColumn ? String(r[periodColumn] || '').trim() || '(no period)' : '(all)';
+    if (!periods[p]) periods[p] = [];
+    periods[p].push(r);
+  }
+
+  // Build aggregate snapshot
+  const snapshot = {
+    date: new Date().toISOString().slice(0, 10),
+    thresholds: { strong: tStrong, steady: tSteady },
+    periods: {}
+  };
+
+  for (const [p, rows] of Object.entries(periods)) {
+    const tierCounts = { strong: 0, steady: 0, struggling: 0 };
+    const missingByAssignment = {};
+    for (const a of assignmentColumns) missingByAssignment[a.name] = 0;
+
+    for (const r of rows) {
+      let missingCount = 0;
+      for (const a of assignmentColumns) {
+        if (isMissing(r[a.header], treatBlankMissing)) {
+          missingCount++;
+          missingByAssignment[a.name]++;
+        }
+      }
+      if (missingCount <= tStrong) tierCounts.strong++;
+      else if (missingCount <= tSteady) tierCounts.steady++;
+      else tierCounts.struggling++;
+    }
+
+    snapshot.periods[p] = {
+      count: rows.length,
+      tiers: tierCounts,
+      missingByAssignment
+    };
+  }
+
+  lastSnapshot = snapshot;
+
+  // Render outputs
+  $('#output-structured').textContent = renderStructured(snapshot, previousSnapshot);
+  $('#output-prose').textContent = renderProse(snapshot, previousSnapshot);
+  $('#output-wrap').style.display = 'block';
+  $('#output-wrap').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function renderStructured(snap, prev) {
+  const lines = [];
+  lines.push(`CLASS PULSE — ${snap.date}`);
+  lines.push(`Tier rule: Strong ≤ ${snap.thresholds.strong} missing · Steady ≤ ${snap.thresholds.steady} · Struggling > ${snap.thresholds.steady}`);
+  if (prev) lines.push(`Comparing to snapshot from ${prev.date}`);
+  lines.push('');
+
+  for (const [p, data] of Object.entries(snap.periods)) {
+    lines.push(`Period ${p} — ${data.count} students`);
+    const prevPeriod = prev && prev.periods[p];
+    for (const tier of ['strong', 'steady', 'struggling']) {
+      const cur = data.tiers[tier];
+      if (prevPeriod) {
+        const prv = prevPeriod.tiers[tier];
+        const diff = cur - prv;
+        const arrow = diff > 0 ? `+${diff}` : diff < 0 ? `${diff}` : '0';
+        lines.push(`  ${capitalize(tier).padEnd(11)} ${String(prv).padStart(3)} → ${String(cur).padStart(3)}  (${arrow})`);
+      } else {
+        lines.push(`  ${capitalize(tier).padEnd(11)} ${cur}`);
+      }
+    }
+    // Top missed assignments
+    const topMissed = Object.entries(data.missingByAssignment)
+      .filter(([, n]) => n > 0)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 3);
+    if (topMissed.length) {
+      lines.push(`  Most missed:`);
+      for (const [name, n] of topMissed) lines.push(`    · "${name}" (${n})`);
+    } else {
+      lines.push(`  Most missed: none — clean week.`);
+    }
+    lines.push('');
+  }
+
+  // Class total
+  const totals = { strong: 0, steady: 0, struggling: 0, count: 0 };
+  for (const data of Object.values(snap.periods)) {
+    totals.count += data.count;
+    for (const t of ['strong', 'steady', 'struggling']) totals[t] += data.tiers[t];
+  }
+  if (Object.keys(snap.periods).length > 1) {
+    lines.push(`ACROSS ALL PERIODS — ${totals.count} students`);
+    lines.push(`  Strong: ${totals.strong} · Steady: ${totals.steady} · Struggling: ${totals.struggling}`);
+  }
+
+  return lines.join('\n');
+}
+
+function renderProse(snap, prev) {
+  const parts = [];
+  parts.push(`Class pulse for ${snap.date}.`);
+  if (prev) parts.push(`Comparing to the snapshot from ${prev.date}.`);
+
+  for (const [p, data] of Object.entries(snap.periods)) {
+    const prevPeriod = prev && prev.periods[p];
+    let sentence = `Period ${p} had ${data.count} students. `;
+    if (prevPeriod) {
+      const moves = [];
+      for (const tier of ['strong', 'steady', 'struggling']) {
+        const diff = data.tiers[tier] - prevPeriod.tiers[tier];
+        if (diff !== 0) {
+          const dir = diff > 0 ? 'grew by' : 'dropped by';
+          moves.push(`${capitalize(tier)} ${dir} ${Math.abs(diff)} (now ${data.tiers[tier]})`);
+        }
+      }
+      if (moves.length === 0) sentence += `Tier counts unchanged from last snapshot — Strong ${data.tiers.strong}, Steady ${data.tiers.steady}, Struggling ${data.tiers.struggling}. `;
+      else sentence += moves.join('; ') + '. ';
+    } else {
+      sentence += `Tier breakdown: Strong ${data.tiers.strong}, Steady ${data.tiers.steady}, Struggling ${data.tiers.struggling}. `;
+    }
+    const topMissed = Object.entries(data.missingByAssignment).filter(([, n]) => n > 0).sort((a, b) => b[1] - a[1]).slice(0, 2);
+    if (topMissed.length) {
+      const phrase = topMissed.map(([n, c]) => `"${n}" (${c})`).join(' and ');
+      sentence += `Most-missed: ${phrase}.`;
+    } else {
+      sentence += `No missing work this period.`;
+    }
+    parts.push(sentence);
+  }
+  return parts.join(' ');
+}
+
+// ---------- Snapshot save ----------
+function saveSnapshot() {
+  if (!lastSnapshot) return;
+  const blob = new Blob([JSON.stringify(lastSnapshot, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `class-pulse-snapshot-${lastSnapshot.date}.json`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+// ---------- Copy ----------
+function copyText(text, confirmId) {
+  navigator.clipboard.writeText(text).then(() => {
+    const el = document.getElementById(confirmId);
+    el.classList.add('show');
+    setTimeout(() => el.classList.remove('show'), 1500);
+  });
+}
+
+// ---------- Helpers ----------
+function isMissing(v, blankIsMissing) {
+  if (v === '' || v === null || v === undefined) return blankIsMissing;
+  const s = String(v).trim().toLowerCase();
+  if (s === '') return blankIsMissing;
+  if (['excused','exempt','ex','exc'].includes(s)) return false;
+  if (['missing','m','mi','mis'].includes(s)) return true;
+  if (!isNaN(parseFloat(s))) return false;
+  return false;
+}
+function stripMaxPts(h) { return h.replace(/\s*\(\d+(?:\.\d+)?\)\s*$/, '').trim(); }
+function capitalize(s) { return s.charAt(0).toUpperCase() + s.slice(1); }
+function escHtml(s) { return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function escAttr(s) { return escHtml(s); }
+</script>
+
+</body>
+</html>
