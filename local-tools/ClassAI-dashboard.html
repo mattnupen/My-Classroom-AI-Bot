@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>ClassAI Dashboard</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  :root {
+    --bg: #fafaf9;
+    --card-bg: #ffffff;
+    --line: #e7e5e4;
+    --ink: #18181b;
+    --muted: #6b7280;
+    --sidebar-bg: #1f2937;
+    --sidebar-ink: #e5e7eb;
+    --sidebar-muted: #9ca3af;
+    --sidebar-active: #4f46e5;
+    --accent: #4f46e5;
+    --tone-good: #10b981;
+    --tone-warning: #f59e0b;
+    --radius: 10px;
+    --space: 16px;
+  }
+
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0;
+    padding: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    font-size: 14px;
+    line-height: 1.5;
+  }
+
+  /* Layout shell */
+  .shell { display: flex; min-height: 100vh; }
+  .sidebar {
+    width: 220px;
+    flex-shrink: 0;
+    background: var(--sidebar-bg);
+    color: var(--sidebar-ink);
+    padding: 20px 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .sidebar .brand {
+    color: white;
+    font-weight: 600;
+    font-size: 15px;
+    padding: 6px 10px 14px;
+    border-bottom: 1px solid #374151;
+    margin-bottom: 10px;
+  }
+  .sidebar .nav-item {
+    display: block;
+    padding: 8px 10px;
+    border-radius: 6px;
+    color: var(--sidebar-ink);
+    text-decoration: none;
+    font-size: 13px;
+    transition: background 0.12s;
+  }
+  .sidebar .nav-item:hover { background: #374151; }
+  .sidebar .nav-item.active { background: var(--sidebar-active); color: white; }
+  .sidebar .nav-item .desc {
+    display: block;
+    font-size: 11px;
+    color: var(--sidebar-muted);
+    margin-top: 2px;
+  }
+  .sidebar .empty {
+    padding: 12px 10px;
+    color: var(--sidebar-muted);
+    font-size: 12px;
+    font-style: italic;
+  }
+
+  /* Main area */
+  .main { flex: 1; padding: 28px 32px; min-width: 0; }
+  .header { margin-bottom: 24px; }
+  .header h1 { margin: 0; font-size: 24px; font-weight: 600; }
+  .header .subtitle { color: var(--muted); margin-top: 4px; font-size: 13px; }
+
+  /* Error banner */
+  .error-banner {
+    background: #fef2f2;
+    border: 1px solid #fecaca;
+    color: #991b1b;
+    padding: 10px 14px;
+    border-radius: 6px;
+    margin-bottom: 18px;
+    font-size: 13px;
+  }
+  .error-banner:empty { display: none; }
+
+  /* Bento grid */
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    grid-auto-rows: minmax(120px, auto);
+    grid-auto-flow: dense;
+    gap: var(--space);
+  }
+  .grid .empty-state {
+    grid-column: 1 / -1;
+    text-align: center;
+    color: var(--muted);
+    padding: 60px 20px;
+    border: 1px dashed var(--line);
+    border-radius: var(--radius);
+    background: white;
+  }
+</style>
+</head>
+<body>
+<div class="shell">
+  <aside class="sidebar">
+    <div class="brand">ClassAI</div>
+    <nav id="sidebar-nav"></nav>
+  </aside>
+  <main class="main">
+    <div id="error-banner" class="error-banner"></div>
+    <header class="header">
+      <h1 id="dash-title">Dashboard</h1>
+      <div class="subtitle" id="dash-subtitle"></div>
+    </header>
+    <div id="grid" class="grid"></div>
+  </main>
+</div>
+<script>
+  // Renderer will be filled in by Task 5 onwards.
+</script>
+</body>
+</html>
