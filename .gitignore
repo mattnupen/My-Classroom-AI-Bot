@@ -4,14 +4,14 @@ _legacy-reference/
 # macOS
 .DS_Store
 
-# Local sandbox / scratch
-sandbox/
-
 # Local Claude Code config (per-user permissions, etc.)
 .claude/settings.local.json
 
 # Superpowers ephemeral session state (brainstorm servers, logs, PIDs)
 .superpowers/brainstorm/
+
+# Internal planning/spec scratch (Superpowers session output)
+docs/superpowers/
 
 # Environment / secrets
 .env

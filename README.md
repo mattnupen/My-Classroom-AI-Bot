@@ -1,96 +1,140 @@
-# MyClassroomAIbot — Proof of Concept
+# MyClassroomAIbot
 
-> **Status:** Early POC. We're testing one architectural question before committing to the full repo build: *can a classroom AI framework deliver real value to teachers without ever sending student data to Claude?*
+**Can a semi-autonomous classroom AI bot help a class make progress towards a goal?**
 
-## The architecture being tested
+[ Demo video — placeholder URL: [DEMO_VIDEO_URL] ]
 
-Two-layer system:
+## The experiment
 
-1. **Local HTML tools** (this folder's `local-tools/`) handle anything mechanical — parsing the gradebook, identifying missing work, printing per-student cards, generating dashboards. These run entirely in the teacher's browser. **No student data ever leaves the laptop.**
-2. **Claude / Cowork** handles language and judgment — drafting parent messages, building slides, refining the AI persona, generating new local tools. Claude works from the teacher's prose summary, never raw student data.
+That's the question this project exists to explore. Not "can AI do classroom tasks" — it's "can an AI, given some real autonomy, move the needle on something a teacher actually cares about."
 
-If this split holds up under a realistic day-in-the-life test, we'll build the full repo around it. If it falls apart, we go back to the drawing board before investing the next 3–4 weeks.
+To make the question answerable, the AI runs under four constraints:
+
+1. **A personality.** Your students help name and shape the AI's voice. It's *your class's* AI, with a stake in your class's success.
+
+2. **A clear goal.** The AI is given one mission for the unit, quarter, or semester. Everything it does ladders up to that goal, and "progress towards the goal" is what success looks like.
+
+3. **Evidence-based teaching practices.** The AI's defaults come from research, not vibes. When it makes a choice — what to put on a slide, how to phrase an encouragement note — it can tell you which practice it's drawing on.
+
+4. **Aggregated data only.** The AI never sees individual student records. Only summaries, tier counts, and aggregate movement. PII stays in offline tools that run on the teacher's laptop.
+
+The AI proposes, the teacher decides, the class moves (or doesn't), the aggregates come back, the AI adjusts. That's the loop.
+
+The shape of this project is borrowed from [Anthropic's Project Vend](https://www.anthropic.com/research/project-vend-1) — the experiment where Claude was given a small business to run, with real goals, real constraints, and real autonomy. The question here is the classroom version: what if something like that existed in a classroom? This is a scaled-back test of that idea.
+
+## How it works
+
+### The brain: Claude Cowork
+
+The AI lives in Claude Cowork. Every conversation reads from a small set of instruction files in this folder — the AI's personality, its goal, the teaching practices it draws on, and the boundaries the teacher has set. The teacher updates those files through normal chat; the AI grows with the class across every session.
+
+### How it personalizes
+
+The teacher and the class build the AI's personality and style together during setup — the AI can produce the slides and voting forms you'll use to run that. From there, it adapts to what the class wants and needs: an "ASL sign of the week" drawn from your uploaded lessons, an end-of-unit celebration where it tells you what to pick up and prints the slides and posters for you.
+
+### What the AI makes
+
+Slides, posters, parent messages, encouragement notes, lesson openers. When the right tool doesn't exist, the AI builds one — a single offline HTML file the teacher double-clicks to open. None of these tools call the internet or store student data; the AI generates the code, the browser does the data work.
+
+### How the AI hears from the class
+
+Students send anonymous messages through something like a Google Form. The teacher removes any identifying info like names or emails, pastes the aggregate into Cowork, and the AI uses the messages to adjust what it proposes next.
+
+### How the AI measures itself
+
+The teacher drops their gradebook into an offline tool (included) that produces a paste-ready aggregate — tier counts, most-missed assignments, week-over-week movement, zero names. The AI reads the aggregate and checks whether its actions are moving the class toward the goal.
+
+### Where the AI doesn't get to decide
+
+The teacher sets boundaries during onboarding and adjusts them as the experiment runs: what the AI can ship without review, what always needs a human read first, and what's off-limits entirely.
+
+## The offline apps
+
+The project includes a set of small browser-based apps the teacher uses to do anything that touches student data. They run entirely offline — no network calls, no cloud, no AI in the loop. Your roster and gradebook never leave your laptop. **They're safe to use with real student data.**
+
+You open them through the **AI Dashboard** (`local-tools/ClassAI-dashboard.html`) — double-click it once, and a sidebar lets you jump between apps.
+
+Included today:
+
+- **Dashboard.** Your home base. Shows your class goals, where the class is right now, and what your AI is focused on. Every other app is one click from here.
+
+- **Student Cards.** Print one card per student — either what they owe right now (missing work, with checkboxes) or how they're doing overall (every assignment, color-coded). Two-per-page; cut them and hand them out at the door.
+
+- **Parent Messages.** Write one short template per tier (struggling / steady / strong) and the app mail-merges it into per-student messages with each kid's name, period, grade, and missing assignments. You paste each one into ParentSquare, email, or whatever you use to reach families.
+
+- **Gradebook Analytics.** Drop in your gradebook and get a sortable per-student view — tiers, missing assignments, and patterns you wouldn't spot scrolling rows in PowerSchool.
+
+- **Class Pulse.** A name-free summary of how the whole class is doing — counts by tier, most-missed assignments, week-over-week movement. This is what you paste to your AI so it knows the state of the class without ever seeing student records.
+
+- **Badges.** Make up your own badges (Most Improved, Best Question of the Week, whatever fits your class), pick students from the roster, and print bordered certificates two-per-page.
+
+- **Random Groups.** Generate balanced groups of any size, with a do-not-pair list (for the kids you know shouldn't be together) and pair history so the same combinations don't keep coming up.
+
+When you need something the included apps don't cover, the **teacher-app-builder skill** (installable in Claude Cowork) lets the AI generate a new offline app for you. It asks a few questions, builds the HTML, runs a privacy check, and registers the new app with the Dashboard sidebar automatically. Install instructions: [docs/teacher-app-builder.md](docs/teacher-app-builder.md).
 
 ## What's in this folder
 
 ```
 MyClassroomAIbot/
-├── README.md                       ← you are here
-├── local-tools/
-│   ├── student-cards.html          ← drag-drop gradebook, print per-student cards in two modes (Missing Work or Full Progress)
-│   ├── class-pulse.html            ← drag-drop gradebook, get an aggregate-only summary (safe to paste into Claude)
-│   ├── class-dashboard.html        ← drag-drop gradebook, see a visual one-page snapshot of where the class stands
-│   ├── parent-messages.html        ← write per-tier templates, merge with gradebook, get per-student messages ready to send
-│   └── badges.html                 ← define badges, award them to students, print certificates; history saved to class-state.json
+├── README.md                          ← you are here
+├── CLAUDE.md                          ← the first file your AI reads each session — sets the rules of the experiment
+│
+├── ai-instructions/                   ← the AI's character, principles, and rules (the teacher edits these through normal chat)
+│   ├── your-classroom-ai.md           ← the AI's name, voice, and current mission — the personality file
+│   ├── teaching-principles.md         ← research-backed defaults the AI uses
+│   ├── research-foundations.md        ← the research the AI cites when it explains its choices
+│   ├── safety-rules.md                ← hard limits the AI follows
+│   └── weekly-rhythm.md               ← how the day, week, and month flow
+│
+├── content-templates/                 ← student-facing materials for introducing the project and running the vote
+│   ├── day-one-lesson-plan.md         ← 15-minute script for introducing the AI to your class
+│   ├── lms-intro-page.md              ← LMS page text explaining the project to students
+│   ├── student-voting-form.md         ← co-creation vote template (Google Form or paper)
+│   └── classroom-display-rules.md     ← design rules the AI follows for anything visual
+│
+├── local-tools/                       ← the offline apps (see "The offline apps" section above)
+│   ├── ClassAI-dashboard.html         ← home base — open this one, the sidebar gets you to every other app
+│   ├── student-cards.html             ← drop in a gradebook, print per-student cards (missing work or full progress)
+│   ├── parent-messages.html           ← per-tier templates, mail-merged into per-student messages to send home
+│   ├── gradebook-analytics.html       ← drop in a gradebook, get a sortable per-student view with tier labels
+│   ├── class-pulse.html               ← drop in a gradebook, get the aggregate-only summary you paste into your AI
+│   ├── badges.html                    ← define badges, award them, print bordered certificates
+│   ├── random-groups.html             ← balanced groups with a do-not-pair list and pair-history memory
+│   └── _nav.js                        ← shared sidebar that links every app to every other app
+│
+├── setup/                             ← everything you need before launching with students
+│   ├── getting-started.md             ← the end-to-end setup guide — start here after this README
+│   ├── crisis-card.md                 ← fill in, print, keep on your desk (emergency contacts and procedures)
+│   └── permissions/
+│       ├── admin-pitch.md             ← one-page pitch for your principal
+│       ├── parent-letter.md           ← template letter to send families
+│       ├── privacy-explainer.md       ← long-form privacy explanation for admins and district privacy officers
+│       └── checklist.md               ← pre-launch checklist
+│
 ├── sandbox/
-│   └── fictional-gradebook.csv     ← 24 fake students with varied missing-work patterns
-└── _legacy-reference/              ← the original iterative project, kept for reference; will be deleted before going public
+│   └── fictional-gradebook.csv        ← 24 fake students with varied missing-work patterns (for trying things out)
+│
+├── docs/
+│   └── teacher-app-builder.md         ← install instructions for the build-your-own-app skill
+│
+└── teacher-app-builder-skill-upload.zip  ← installer for the build-your-own-app skill (see "The offline apps" section)
 ```
 
-## The tools so far
+## Try it without your students
 
-### `student-cards.html`
-For students. Drop in the gradebook, pick a card type:
-- **Missing Work** — one printable card per student listing only what they owe, with checkboxes and a "great work" variant for students with no missing assignments.
-- **Full Progress** — a complete grade snapshot per student: current grade with letter, every assignment with score and percentage, color-coded.
+Before launching with real kids, try this with the included fictional gradebook. Three on-ramps depending on how much time you have:
 
-Both modes use the same greeting/body/footer customization and the same `{name}` substitution.
+**Just the apps, quickest path (2 minutes)**
+Double-click `local-tools/ClassAI-dashboard.html`. Click "Student Cards" in the sidebar. Drop in `sandbox/fictional-gradebook.csv`. Print a card. That's the whole flow.
 
-### `class-pulse.html`
-For the teacher (and for safe AI use). Drop in the gradebook, get a **paste-ready summary that contains zero student names, zero IDs, and zero per-student rows** — only tier counts, most-missed assignments, and week-over-week movement. Pastes cleanly into Claude with no FERPA risk. Save a snapshot file (kept anywhere outside the Cowork folder) to enable next week's trend comparison.
+**A full dry run of the apps (~15 minutes)**
+From the Dashboard, walk through Student Cards → Class Pulse → Parent Messages → Badges with the fictional gradebook. See what each one produces side by side.
 
-### `class-dashboard.html`
-For the teacher's eyes only. Drop in the gradebook to see a one-page visual snapshot: hero stats (% strong, % struggling, total missing items, top pain point), per-period tier breakdown bars, a most-missed-assignments leaderboard, and a sortable/searchable student table. Names are shown here because this view never leaves the laptop. Reuses the same snapshot format as Class Pulse — drop in last week's snapshot to get trend arrows.
+**The full experiment, end to end (~30 minutes)**
+Open this folder in Claude Cowork and say hi. Run Class Pulse, paste the aggregate into Cowork, and ask the AI for "Monday's opening slide." That's the loop from Section 2 running on a fictional class.
 
-### `parent-messages.html`
-For weekly/monthly family communication. Write a message template for each tier (Strong / Steady / Struggling) — placeholders fill in name, period, current grade, missing assignments, points to recover. Drop in the gradebook and the tool generates one ready-to-send message per student, with copy buttons. Templates auto-save in the browser and can be exported as JSON to share with colleagues. Built-in "Load sample templates" button gives teachers a high-quality starting point they can edit.
+The full setup walkthrough — admin permission, parent letter, day one with real students — is in [setup/getting-started.md](setup/getting-started.md).
 
-### `badges.html`
-For celebration. Define your own badges (name + icon + color + description), award them to students from the roster (multi-select, filter by period), and print bordered certificates two-per-page. **Introduces the shared `class-state.json` file** — a single file the teacher saves anywhere outside the Cowork folder that holds badge definitions and award history. Future tools (Random Groups, Cold-Call) will read/write the same file, so the teacher only manages one piece of state across the whole toolkit.
+## Next steps
 
-## The shared state file: `class-state.json`
-
-Some tools (currently `badges.html`, soon `random-groups.html` and `cold-call.html`) need to remember information between sessions — badge definitions, who got what badge, who has worked together, who's been called on. Rather than scatter this across browser caches or separate files, the toolkit uses **one JSON file the teacher owns and controls**.
-
-```
-class-state.json (kept in Documents, Drive, USB — NOT in the Cowork folder)
-├── badges
-│   ├── definitions   (your custom badges)
-│   └── awards        (history: who got what, when)
-├── groups            (future: pair history, do-not-pair list)
-└── coldCall          (future: who's been called on recently)
-```
-
-The flow is always: **drop the file in → make changes → download the updated file back to the same location.** No cloud, no account, no lock-in. The teacher can back it up, share it with a co-teacher, or move between computers by carrying one file.
-
-## How to test the POC (5 minutes)
-
-1. **Open the tool.** Double-click `local-tools/missing-work-cards.html`. It opens in your default browser.
-   *(Needs internet on first load to fetch the spreadsheet-parsing library. Future versions will bundle it for fully-offline use.)*
-2. **Load the sandbox data.** Drag `sandbox/fictional-gradebook.csv` into the upload zone (or click to pick it).
-3. **Confirm the column mapping.** The tool auto-detects "Student" and "Period" — confirm or adjust.
-4. **Customize the message.** Edit the greeting and footer. Use `{name}` to insert the student's first name.
-5. **Generate.** Filter by period (or all), pick a missing-work threshold, click Generate.
-6. **Print.** Cmd/Ctrl-P → save as PDF or print. Cards print two-per-page, ready to cut and hand out.
-
-## What to look for when judging the POC
-
-- **Did the cards come out well?** Are they something you'd actually print and hand to students?
-- **How long did the whole flow take?** Should be under 5 minutes once you know the steps.
-- **Did anything break or surprise you?** Note where the tool was unclear, ugly, or wrong.
-- **What's missing?** What would the original Nolan workflow have done that this tool doesn't?
-
-## Next step (after POC validation)
-
-If the missing-work-cards tool feels useful, we'll continue with:
-
-1. **Simulate the AI side of the same day.** Write a 5-minute teacher prose summary; have Claude generate the day's slides, a parent message, and an encouragement message from it. Compare to what Nolan would have produced.
-2. **Decide.** If the combined output is roughly as good as the original — commit to the full repo plan with Tier 0 (no student data) as the default architecture.
-
-## The full plan (for reference)
-
-See conversation notes for the broader 17–20 session plan covering: foundation, AI instruction layer, full local-tools suite, content templates, onboarding flow (8 phases including a dry-run week), sandbox dataset, docs, and privacy sweep before release.
-
----
-
-*Created 2026-05-17. Not yet ready for other teachers — this is a build-in-progress.*
+Coming soon.

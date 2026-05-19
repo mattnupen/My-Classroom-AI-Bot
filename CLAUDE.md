@@ -6,7 +6,7 @@ This project is built around a strict architectural privacy boundary: **Claude m
 
 Two files hold the data Claude Cowork updates during teacher conversations:
 
-- **`local-tools/_nav.js`** — the universal sidebar nav. Contains a top-level `APPS` array (a JS literal, same fields as a JSON object: `id`, `label`, `file`, `description`). Edit this when a new tool ships. The sidebar appears on every tool page via `<script src="./_nav.js"></script>`.
+- **`local-tools/_nav.js`** — the universal sidebar nav. Contains a top-level `DEFAULT_APPS` array (a JS literal, same fields as a JSON object: `id`, `label`, `file`, `description`). Edit this when a new tool ships. The sidebar appears on every tool page via `<script src="./_nav.js"></script>`.
 
 - **`local-tools/ClassAI-dashboard.html`** — the dashboard's class-goal cards live inside an inline `<script type="application/json" id="dashboard-data">…</script>` block. Edit the JSON content inside that block. Changes often.
 
@@ -24,7 +24,7 @@ The teacher never opens or edits these files directly. All authoring happens via
 
 4. **`id` is stable.** Once a card or app has an `id`, never rename it. Only change content fields.
 
-5. **When a new tool ships, register it in `_nav.js`.** Add a new entry to the `APPS` array. No change to the other tools required — they all read from `_nav.js` on load.
+5. **When a new tool ships, register it in `_nav.js`.** Add a new entry to the `DEFAULT_APPS` array. No change to the other tools required — they all read from `_nav.js` on load.
 
 ## Files Claude Does Not Open
 
