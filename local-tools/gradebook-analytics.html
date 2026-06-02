@@ -538,10 +538,16 @@ function analyze() {
     const missingItems = [];
     for (const a of assignmentCols) {
       const raw = r[a.header];
-      if (isExcused(raw)) continue;
-      if (isMissing(raw, { blankIsMissing: blankMissing, zeroIsMissing: false })) { missingCount++; missingItems.push(a.name); continue; }
+      if (isExcused(raw)) continue;                 // excused: drops out of earned AND possible
+      if (isMissing(raw, { blankIsMissing: blankMissing, zeroIsMissing: false })) {
+        missingCount++;
+        missingItems.push(a.name);
+        if (a.max) possible += a.max;               // missing counts as 0 / max → lowers the grade
+        continue;
+      }
       const num = parseFloat(String(raw).trim());
       if (!isNaN(num) && a.max) { earned += num; possible += a.max; }
+      // a blank that is NOT treated as missing falls through here and is skipped (ungraded)
     }
     const gradePct = possible > 0 ? Math.round((earned / possible) * 1000) / 10 : null;
     const tier = missingCount <= tStrong ? 'strong' : missingCount <= tSteady ? 'steady' : 'struggling';
