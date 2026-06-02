@@ -112,7 +112,8 @@ MyClassroomAIbot/
 │       └── checklist.md               ← pre-launch checklist
 │
 ├── sandbox/
-│   └── fictional-gradebook.csv        ← 24 fake students with varied missing-work patterns (for trying things out)
+│   ├── fictional-gradebook.csv         ← 24 fake students, simple format (for trying things out)
+│   └── fictional-gradebook-canvas.csv  ← 29 fake students, real Canvas LMS export format (emoji headers, points-possible row, "Last, First" names)
 │
 ├── docs/
 │   └── teacher-app-builder.md         ← install instructions for the build-your-own-app skill
