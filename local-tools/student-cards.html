@@ -221,6 +221,66 @@
   .pct-miss { color: #991b1b; font-style: italic; }
   .card table.scores tr.missing td.title { color: #991b1b; }
 
+  /* Assignment modal */
+  .modal-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.4);
+    z-index: 100;
+    align-items: center;
+    justify-content: center;
+  }
+  .modal-overlay.open { display: flex; }
+  .modal {
+    background: white;
+    border-radius: 12px;
+    width: 520px;
+    max-width: calc(100vw - 40px);
+    max-height: 80vh;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.25);
+  }
+  .modal-header {
+    padding: 20px 24px 14px;
+    border-bottom: 1px solid var(--line);
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+  }
+  .modal-header h3 { margin: 0 0 3px; font-size: 16px; }
+  .modal-header p { margin: 0; font-size: 13px; color: var(--muted); }
+  .modal-close { background: none; border: none; font-size: 22px; line-height: 1; cursor: pointer; color: var(--muted); padding: 0; }
+  .modal-close:hover { color: var(--ink); }
+  .modal-body { overflow-y: auto; padding: 8px 24px; flex: 1; }
+  .modal-footer {
+    padding: 14px 24px;
+    border-top: 1px solid var(--line);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+  }
+  .modal-footer .select-links { font-size: 13px; color: var(--muted); }
+  .modal-footer .select-links a { color: var(--accent); cursor: pointer; text-decoration: none; }
+  .modal-footer .select-links a:hover { text-decoration: underline; }
+  .assign-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 9px 0;
+    border-bottom: 1px dashed var(--line);
+    font-size: 14px;
+  }
+  .assign-item:last-child { border-bottom: none; }
+  .assign-item input[type="checkbox"] { flex-shrink: 0; width: 15px; height: 15px; cursor: pointer; }
+  .assign-item label { flex: 1; cursor: pointer; line-height: 1.3; }
+  .assign-item .pts-badge { font-size: 11px; color: var(--muted); white-space: nowrap; }
+  button.has-hidden { background: var(--warn-soft); color: var(--warn); border-color: #fcd34d; }
+  button.has-hidden:hover { background: #fde68a; }
+
   /* Print */
   @page { size: letter portrait; margin: 0.4in; }
   @media print {
@@ -252,7 +312,7 @@
         <input type="file" id="file-input" accept=".csv,.xlsx,.xls">
       </label>
       <div id="file-status" class="file-status" style="display:none;"></div>
-      <p class="hint">Need to try it out? Use <code>sandbox/fictional-gradebook.csv</code> from this folder.</p>
+      <p class="hint">Need to try it out? Use a sample from the <code>sandbox/</code> folder — <code>fictional-gradebook.csv</code> (simple) or <code>fictional-gradebook-canvas.csv</code> (Canvas export).</p>
     </div>
   </section>
 
@@ -270,7 +330,20 @@
           <select id="map-period"><option value="">(none)</option></select>
         </div>
       </div>
+      <div style="margin-top:14px;">
+        <label>Where are points possible listed?</label>
+        <select id="points-format">
+          <option value="auto">Auto-detect</option>
+          <option value="header">In column name — e.g. "Assignment (100)"</option>
+          <option value="row">In second row (Canvas LMS style)</option>
+          <option value="none">Not listed</option>
+        </select>
+        <p class="hint" id="points-format-hint">Load a file to auto-detect.</p>
+      </div>
       <div class="row" style="margin-top:14px;">
+        <label style="margin:0;"><input type="checkbox" id="treat-zero-as-missing" checked> Treat scores of 0 as missing</label>
+      </div>
+      <div class="row" style="margin-top:8px;">
         <label style="margin:0;"><input type="checkbox" id="treat-blank-as-missing"> Treat blank cells as missing (default: only cells marked "Missing")</label>
       </div>
       <p class="hint">Every other column is treated as an assignment. The score format is auto-detected: "Missing", "M", "MI" (any case) count as missing. "Excused", "Exempt", "EX" are skipped. Numbers count as present.</p>
@@ -329,6 +402,7 @@
       </div>
       <div class="actions">
         <button class="primary" id="btn-generate">Generate cards</button>
+        <button class="secondary" id="btn-assignments">Choose assignments…</button>
         <button class="secondary" id="btn-print" disabled>Print &rarr;</button>
         <button class="secondary" id="btn-reset">Start over</button>
       </div>
@@ -346,13 +420,140 @@
 
 </main>
 
+<!-- Assignment selection modal -->
+<div class="modal-overlay screen-only" id="assign-modal" role="dialog" aria-modal="true" aria-labelledby="assign-modal-title">
+  <div class="modal">
+    <div class="modal-header">
+      <div>
+        <h3 id="assign-modal-title">Choose assignments</h3>
+        <p>Uncheck any assignment to hide it from all cards.</p>
+      </div>
+      <button class="modal-close" id="assign-modal-close" aria-label="Close">&times;</button>
+    </div>
+    <div class="modal-body" id="assign-modal-list"></div>
+    <div class="modal-footer">
+      <span class="select-links">
+        <a id="assign-select-all">Select all</a> &middot; <a id="assign-select-none">Deselect all</a>
+      </span>
+      <button class="primary" id="assign-modal-done">Done</button>
+    </div>
+  </div>
+</div>
+
 <script>
 let workbookData = null;     // { headers: [...], rows: [{...}] }
 let nameColumn = null;
 let periodColumn = null;
 let assignmentColumns = [];  // [{header, max}]
+let pointsRow = null;        // the points-possible row object, or null
+let hiddenAssignments = new Set(); // column headers the teacher has hidden
 
 const $ = sel => document.querySelector(sel);
+
+// ===== BEGIN canonical gradebook-parse (byte-identical to lib/gradebook-parse.js) =====
+const _EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
+const _ID_HEADER_RE = /^(id|.*\bsis\b.*|.*login.*|.*user\s*id.*)$/i;
+const _SUMMARY_HEADER_RE = /\b(current|final|unposted|imported)\b.*\b(score|points)\b/i;
+const _GROUP_HEADER_RE = /^(period|section|class|hour|block|homeroom)$/i;
+
+// "Last, First" -> "First Last"; trims and collapses whitespace.
+function normalizeName(raw) {
+  const s = String(raw == null ? '' : raw).trim().replace(/\s+/g, ' ');
+  if (!s) return '';
+  // 3+ comma-separated parts (e.g. "Smith, John, Jr") are intentionally left unchanged due to ambiguity.
+  const parts = s.split(',');
+  if (parts.length === 2 && parts[0].trim() && parts[1].trim()) {
+    return parts[1].trim() + ' ' + parts[0].trim();
+  }
+  return s;
+}
+
+// Most name-like column: prefer a literal Student/Name header, else the first
+// column whose sampled values are mostly non-numeric, non-email text.
+function detectNameColumn(headers, rows) {
+  const named = headers.find(h => /^(student|name|student name|full name)$/i.test(String(h).trim()));
+  if (named) return named;
+  const sample = rows.slice(0, 10);
+  for (const h of headers) {
+    if (_ID_HEADER_RE.test(String(h)) || _GROUP_HEADER_RE.test(String(h))) continue;
+    const vals = sample.map(r => String(r[h] == null ? '' : r[h]).trim()).filter(Boolean);
+    if (!vals.length) continue;
+    const nameish = vals.filter(v => !_EMAIL_RE.test(v) && isNaN(parseFloat(v)) && /[a-z]/i.test(v)).length;
+    if (nameish >= Math.ceil(vals.length * 0.6)) return h;
+  }
+  const firstUsable = headers.find(h => !_ID_HEADER_RE.test(String(h)) && !_GROUP_HEADER_RE.test(String(h)));
+  return firstUsable == null ? null : firstUsable;
+}
+
+function detectGroupColumn(headers) {
+  return headers.find(h => _GROUP_HEADER_RE.test(String(h).trim())) || null;
+}
+
+// Index of the "Points Possible" row (Canvas puts it first), else -1.
+function findPointsPossibleRowIndex(rows) {
+  for (let i = 0; i < Math.min(rows.length, 5); i++) {
+    const hit = Object.values(rows[i]).some(v => /points\s*possible/i.test(String(v == null ? '' : v).trim()));
+    if (hit) return i;
+  }
+  return -1;
+}
+
+// Split columns into assignment columns vs ignored metadata/summary columns.
+function classifyColumns(headers, rows, opts) {
+  const nameCol = opts && opts.nameCol, groupCol = opts && opts.groupCol;
+  const sample = rows.slice(0, 12);
+  const assignments = [], ignored = [];
+  for (const h of headers) {
+    if (h === nameCol || h === groupCol ||
+        _ID_HEADER_RE.test(String(h)) || _SUMMARY_HEADER_RE.test(String(h)) || _GROUP_HEADER_RE.test(String(h))) {
+      ignored.push(h); continue;
+    }
+    const vals = sample.map(r => String(r[h] == null ? '' : r[h]).trim()).filter(Boolean);
+    const emails = vals.filter(v => _EMAIL_RE.test(v)).length;
+    if (vals.length && emails >= Math.ceil(vals.length * 0.6)) { ignored.push(h); continue; }
+    assignments.push(h);
+  }
+  return { assignments, ignored };
+}
+
+// Point maxima per header. Prefer the points-possible row when present, because
+// Canvas assignment headers carry an assignment ID in parens (NOT points).
+function detectMaxes(headers, pointsRow) {
+  const maxes = {};
+  for (const h of headers) {
+    if (pointsRow) {
+      const v = parseFloat(String(pointsRow[h] == null ? '' : pointsRow[h]).trim());
+      maxes[h] = isNaN(v) ? null : v;
+    } else {
+      const m = String(h).match(/\((\d+(?:\.\d+)?)\)\s*$/);
+      maxes[h] = m ? parseFloat(m[1]) : null;
+    }
+  }
+  return maxes;
+}
+
+function isExcused(v) {
+  return ['excused','exempt','ex','exc'].includes(String(v == null ? '' : v).trim().toLowerCase());
+}
+
+function isMissing(v, opts) {
+  const blankIsMissing = !!(opts && opts.blankIsMissing);
+  const zeroIsMissing = !!(opts && opts.zeroIsMissing);
+  if (v === '' || v === null || v === undefined) return blankIsMissing;
+  const s = String(v).trim().toLowerCase();
+  if (s === '') return blankIsMissing;
+  if (isExcused(s)) return false;
+  if (['missing','m','mi','mis'].includes(s)) return true;
+  if (/^-?\d+(?:\.\d+)?$/.test(s)) return zeroIsMissing && parseFloat(s) === 0;
+  return false;
+}
+
+// Display label for an assignment column: strip a trailing (NNN) id/points tag.
+function stripColumnTag(h) {
+  return String(h).replace(/\s*\((?:\d+(?:\.\d+)?)\)\s*$/, '').trim();
+}
+// ===== END canonical gradebook-parse =====
+
 const dropzone = $('#dropzone');
 const fileInput = $('#file-input');
 const fileStatus = $('#file-status');
@@ -374,19 +575,32 @@ fileInput.addEventListener('change', e => {
 });
 
 function handleFile(file) {
+  const isCSV = /\.csv$/i.test(file.name);
   const reader = new FileReader();
   reader.onload = e => {
     try {
-      const data = new Uint8Array(e.target.result);
-      const wb = XLSX.read(data, { type: 'array' });
+      // CSV files must be read as UTF-8 text so emoji and other multi-byte
+      // characters aren't mangled; XLSX/XLS files need the binary array path.
+      const wb = isCSV
+        ? XLSX.read(e.target.result, { type: 'string' })
+        : XLSX.read(new Uint8Array(e.target.result), { type: 'array' });
       const sheet = wb.Sheets[wb.SheetNames[0]];
       const rows = XLSX.utils.sheet_to_json(sheet, { defval: '' });
       if (!rows.length) throw new Error('No rows found in the first sheet.');
       const headers = Object.keys(rows[0]);
-      workbookData = { headers, rows };
+      // Extract the points-possible row (Canvas puts it first) so students exclude it.
+      const ppIndex = findPointsPossibleRowIndex(rows);
+      pointsRow = ppIndex >= 0 ? rows[ppIndex] : null;
+      const studentRows = ppIndex >= 0 ? rows.filter((_, i) => i !== ppIndex) : rows;
+      workbookData = { headers, rows, studentRows };
+      // Seed mapping + hidden set from the canonical classifier.
+      const nameCol = detectNameColumn(headers, studentRows);
+      const groupCol = detectGroupColumn(headers);
+      hiddenAssignments = new Set(classifyColumns(headers, studentRows, { nameCol, groupCol }).ignored);
+      const studentCount = studentRows.length;
       fileStatus.style.display = 'flex';
-      fileStatus.textContent = `Loaded ${file.name} — ${rows.length} students, ${headers.length} columns. Continue to Step 2 below.`;
-      setupMapping(headers);
+      fileStatus.textContent = `Loaded ${file.name} — ${studentCount} students, ${headers.length} columns. Continue to Step 2 below.`;
+      setupMapping(headers, nameCol, groupCol);
     } catch (err) {
       fileStatus.style.display = 'block';
       fileStatus.style.background = '#fee2e2';
@@ -396,11 +610,16 @@ function handleFile(file) {
       fileStatus.textContent = `Could not read this file: ${err.message}`;
     }
   };
-  reader.readAsArrayBuffer(file);
+  // Read CSV as text (UTF-8) so the string path above works correctly
+  if (isCSV) {
+    reader.readAsText(file, 'UTF-8');
+  } else {
+    reader.readAsArrayBuffer(file);
+  }
 }
 
 // ---------- Column mapping ----------
-function setupMapping(headers) {
+function setupMapping(headers, nameCol, groupCol) {
   const nameSel = $('#map-name');
   const periodSel = $('#map-period');
   nameSel.innerHTML = '';
@@ -410,14 +629,20 @@ function setupMapping(headers) {
     periodSel.insertAdjacentHTML('beforeend', `<option value="${escAttr(h)}">${escHtml(h)}</option>`);
   });
 
-  // Auto-detect
-  const guessName = headers.find(h => /^(student|name|student name|full name|last name)$/i.test(h.trim()))
-                 || headers[0];
-  const guessPeriod = headers.find(h => /(period|class|section|hour|block)/i.test(h));
-  nameSel.value = guessName;
-  if (guessPeriod) periodSel.value = guessPeriod;
+  // Seed the selects from the canonical detectors.
+  nameSel.value = nameCol || headers[0];
+  if (groupCol) periodSel.value = groupCol;
 
   document.querySelectorAll('.step.disabled').forEach(s => s.classList.remove('disabled'));
+
+  // Update the points-format hint to reflect canonical auto-detection.
+  const hint = $('#points-format-hint');
+  if (hint) {
+    hint.textContent = pointsRow
+      ? "Auto-detected: points from a 'Points Possible' row."
+      : 'Auto-detected: points from column names.';
+  }
+
   refreshPeriodFilter();
 }
 
@@ -431,10 +656,75 @@ function refreshPeriodFilter() {
   const filterSel = $('#filter-period');
   filterSel.innerHTML = '<option value="">All periods</option>';
   if (periodColumn) {
-    const periods = [...new Set(workbookData.rows.map(r => String(r[periodColumn] || '').trim()).filter(Boolean))].sort();
+    const periods = [...new Set(workbookData.studentRows.map(r => String(r[periodColumn] || '').trim()).filter(Boolean))].sort();
     periods.forEach(p => filterSel.insertAdjacentHTML('beforeend', `<option value="${escAttr(p)}">${escHtml(p)}</option>`));
   }
 }
+
+// ---------- Assignment modal ----------
+function getAssignmentHeaders() {
+  if (!workbookData) return [];
+  const nm = $('#map-name').value;
+  const per = $('#map-period').value || null;
+  return workbookData.headers.filter(h => h !== nm && h !== per);
+}
+
+function populateAssignmentModal() {
+  const headers = getAssignmentHeaders();
+  const list = $('#assign-modal-list');
+  const maxes = detectMaxes(workbookData ? workbookData.headers : [], pointsRow);
+  list.innerHTML = headers.length === 0
+    ? '<p style="color:var(--muted);text-align:center;padding:20px 0;">No assignments found — load a file first.</p>'
+    : headers.map((h, i) => {
+        const clean = stripColumnTag(h);
+        const pts = (maxes[h] != null) ? `${maxes[h]} pts` : '';
+        const checked = !hiddenAssignments.has(h) ? 'checked' : '';
+        return `
+          <div class="assign-item">
+            <input type="checkbox" id="ac-${i}" data-header="${escAttr(h)}" ${checked}>
+            <label for="ac-${i}">${escHtml(clean)}</label>
+            ${pts ? `<span class="pts-badge">${pts}</span>` : ''}
+          </div>`;
+      }).join('');
+}
+
+function syncAssignmentState() {
+  // Read checkbox state from the open modal into hiddenAssignments
+  document.querySelectorAll('#assign-modal-list input[type="checkbox"]').forEach(cb => {
+    const h = cb.dataset.header;
+    if (cb.checked) hiddenAssignments.delete(h);
+    else hiddenAssignments.add(h);
+  });
+}
+
+function updateAssignmentButton() {
+  const btn = $('#btn-assignments');
+  const n = hiddenAssignments.size;
+  btn.textContent = n > 0 ? `Assignments (${n} hidden)` : 'Choose assignments…';
+  btn.classList.toggle('has-hidden', n > 0);
+}
+
+function closeAssignModal() {
+  syncAssignmentState();
+  $('#assign-modal').classList.remove('open');
+  updateAssignmentButton();
+}
+
+$('#btn-assignments').addEventListener('click', () => {
+  populateAssignmentModal();
+  $('#assign-modal').classList.add('open');
+});
+$('#assign-modal-close').addEventListener('click', closeAssignModal);
+$('#assign-modal-done').addEventListener('click', closeAssignModal);
+$('#assign-modal').addEventListener('click', e => {
+  if (e.target === $('#assign-modal')) closeAssignModal();
+});
+$('#assign-select-all').addEventListener('click', () => {
+  document.querySelectorAll('#assign-modal-list input[type="checkbox"]').forEach(cb => cb.checked = true);
+});
+$('#assign-select-none').addEventListener('click', () => {
+  document.querySelectorAll('#assign-modal-list input[type="checkbox"]').forEach(cb => cb.checked = false);
+});
 
 // ---------- Generation ----------
 $('#btn-generate').addEventListener('click', generateCards);
@@ -457,18 +747,40 @@ function generateCards() {
   nameColumn = $('#map-name').value;
   periodColumn = $('#map-period').value || null;
 
+  const studentRows = workbookData.studentRows;
+
+  // Resolve point maxima. The dropdown is a manual override; 'auto' uses the
+  // canonical detection (points-possible row if present, else header parens).
+  const fmt = $('#points-format').value;
+  let maxes;
+  if (fmt === 'none') {
+    maxes = {};
+  } else if (fmt === 'header') {
+    maxes = detectMaxes(workbookData.headers, null);
+  } else if (fmt === 'row') {
+    maxes = detectMaxes(workbookData.headers, pointsRow || workbookData.rows[0]);
+  } else { // 'auto'
+    maxes = detectMaxes(workbookData.headers, pointsRow);
+  }
+
   assignmentColumns = workbookData.headers
     .filter(h => h !== nameColumn && h !== periodColumn)
     .map(h => {
-      const m = h.match(/\((\d+(?:\.\d+)?)\)/);
-      return { header: h, max: m ? parseFloat(m[1]) : null };
+      const max = (maxes[h] === undefined ? null : maxes[h]);
+      return { header: h, max };
     });
 
+  // Filter out assignments the teacher has hidden via the modal
+  if (hiddenAssignments.size > 0) {
+    assignmentColumns = assignmentColumns.filter(a => !hiddenAssignments.has(a.header));
+  }
+
   const mode = currentMode();
+  const treatZeroMissing = $('#treat-zero-as-missing').checked;
   const treatBlankMissing = $('#treat-blank-as-missing').checked;
   const filterPeriod = $('#filter-period').value;
 
-  const filteredRows = workbookData.rows.filter(r => {
+  const filteredRows = studentRows.filter(r => {
     if (filterPeriod && periodColumn && String(r[periodColumn] || '').trim() !== filterPeriod) return false;
     return true;
   });
@@ -478,7 +790,7 @@ function generateCards() {
     const scores = assignmentColumns.map(a => {
       const v = r[a.header];
       const excused = isExcused(v);
-      const missing = !excused && isMissing(v, treatBlankMissing);
+      const missing = !excused && isMissing(v, { blankIsMissing: treatBlankMissing, zeroIsMissing: treatZeroMissing });
       const num = parseFloat(String(v).trim());
       const score = (!missing && !excused && !isNaN(num)) ? num : null;
       const pct = (score !== null && a.max) ? (score / a.max) * 100 : null;
@@ -489,7 +801,7 @@ function generateCards() {
     const possible = scores.filter(s => !s.excused).reduce((acc, s) => acc + (s.a.max ?? 0), 0);
     const gradePct = possible > 0 ? (earned / possible) * 100 : null;
     return {
-      name: String(r[nameColumn] || '').trim(),
+      name: normalizeName(r[nameColumn]),
       period: periodColumn ? String(r[periodColumn] || '').trim() : '',
       missing,
       scores,
@@ -513,22 +825,6 @@ function generateCards() {
   renderSummary(studentCards, shown, mode);
   renderCards(shown, mode);
   $('#btn-print').disabled = shown.length === 0;
-}
-
-function isExcused(v) {
-  const s = String(v ?? '').trim().toLowerCase();
-  return ['excused','exempt','ex','exc'].includes(s);
-}
-
-function isMissing(v, blankIsMissing) {
-  if (v === '' || v === null || v === undefined) return blankIsMissing;
-  const s = String(v).trim().toLowerCase();
-  if (s === '') return blankIsMissing;
-  if (['excused','exempt','ex','exc'].includes(s)) return false;
-  if (['missing','m','mi','mis'].includes(s)) return true;
-  const n = parseFloat(s);
-  if (!isNaN(n)) return false; // a numeric score = present
-  return false; // unknown string = treat as present (safer)
 }
 
 function renderSummary(all, shown, mode) {
@@ -586,17 +882,17 @@ function progressCardHtml(s, greetingTpl, bodyTpl, footerTpl) {
 
   const rows = s.scores.map(sc => {
     if (sc.excused) {
-      return `<tr><td class="title">${escHtml(stripMaxPts(sc.a.header))}</td><td class="num">Excused</td><td class="num pct">—</td></tr>`;
+      return `<tr><td class="title">${escHtml(stripColumnTag(sc.a.header))}</td><td class="num">Excused</td><td class="num pct">—</td></tr>`;
     }
     if (sc.missing) {
-      return `<tr class="missing"><td class="title">${escHtml(stripMaxPts(sc.a.header))}</td><td class="num">—</td><td class="num pct pct-miss">Missing</td></tr>`;
+      return `<tr class="missing"><td class="title">${escHtml(stripColumnTag(sc.a.header))}</td><td class="num">—</td><td class="num pct pct-miss">Missing</td></tr>`;
     }
     if (sc.score === null) {
-      return `<tr><td class="title">${escHtml(stripMaxPts(sc.a.header))}</td><td class="num">${escHtml(sc.raw)}</td><td class="num pct">—</td></tr>`;
+      return `<tr><td class="title">${escHtml(stripColumnTag(sc.a.header))}</td><td class="num">${escHtml(sc.raw)}</td><td class="num pct">—</td></tr>`;
     }
     const pctCls = sc.pct === null ? '' : sc.pct >= 90 ? 'pct-hi' : sc.pct >= 75 ? 'pct-mid' : sc.pct >= 60 ? 'pct-lo' : 'pct-vlo';
     const scoreText = sc.a.max ? `${sc.score}/${sc.a.max}` : `${sc.score}`;
-    return `<tr><td class="title">${escHtml(stripMaxPts(sc.a.header))}</td><td class="num">${scoreText}</td><td class="num pct ${pctCls}">${sc.pct === null ? '—' : Math.round(sc.pct) + '%'}</td></tr>`;
+    return `<tr><td class="title">${escHtml(stripColumnTag(sc.a.header))}</td><td class="num">${scoreText}</td><td class="num pct ${pctCls}">${sc.pct === null ? '—' : Math.round(sc.pct) + '%'}</td></tr>`;
   }).join('');
 
   return `
@@ -652,7 +948,7 @@ function cardHtml(s, greetingTpl, bodyTpl, footerTpl) {
   const items = s.missing.map(a => `
     <li>
       <span class="check"></span>
-      <span class="title">${escHtml(stripMaxPts(a.header))}</span>
+      <span class="title">${escHtml(stripColumnTag(a.header))}</span>
       <span class="pts">${a.max !== null ? `${a.max} pts` : ''}</span>
     </li>
   `).join('');
@@ -675,10 +971,6 @@ function cardHtml(s, greetingTpl, bodyTpl, footerTpl) {
       <div class="footer">${escHtml(footer)}</div>
     </div>
   `;
-}
-
-function stripMaxPts(h) {
-  return h.replace(/\s*\(\d+(?:\.\d+)?\)\s*$/, '').trim();
 }
 
 // ---------- Helpers ----------
