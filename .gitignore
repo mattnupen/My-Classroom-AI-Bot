@@ -38,3 +38,7 @@ venv/
 *.log
 .superpowers/
 .DS_Store
+
+# Internal roadmap/plan — keep local, not in public repo
+docs/10x-roadmap.md
+docs/10x-plan.md

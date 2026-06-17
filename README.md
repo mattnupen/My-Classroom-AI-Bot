@@ -1,18 +1,26 @@
+<div align="center">
+
 # MyClassroomAIbot
 
-**Give your class its own AI — one your students name, with one mission for the semester, that never sees a single student record.**
+### Give your class its own AI — one your students name, with one mission for the semester, that never sees a single student record.
+
+</div>
 
 It drafts your Monday slides, your parent messages, your encouragement cards. It reads how the class is doing through name-free summaries and adjusts what it makes next. And your gradebook never leaves your laptop — the AI works for your class without ever seeing your students' data.
 
 [ Demo video — placeholder URL: [DEMO_VIDEO_URL] ]
 
-![The dashboard — your class's home base, in demo mode](images/dashboard.png)
+<p align="center">
+  <img src="images/dashboard.png" alt="The Class Tools dashboard — a teacher's home base, shown in demo mode" width="860">
+</p>
 
-A teacher's home base. The AI keeps these cards current through chat — aggregate counts only, never a student's name. Press "See a demo class" to watch it fill in.
+<div align="center"><sub>A teacher's home base. The AI keeps these cards current through chat — aggregate counts only, never a student's name. Press <b>See a demo class</b> to watch it fill in.</sub></div>
 
-![A Monday opening slide the AI generates](images/slide.png)
+<p align="center">
+  <img src="images/slide.png" alt="A Monday opening slide the AI generates" width="640">
+</p>
 
-A Monday opener the AI writes, in the built-in accessible theme: big type, high contrast, one idea, no names.
+<div align="center"><sub>A Monday opener the AI writes, in the built-in accessible theme: big type, high contrast, one idea, no names.</sub></div>
 
 ## See it in 90 seconds
 
@@ -76,9 +84,16 @@ The teacher sets boundaries during onboarding and adjusts them as the experiment
 
 The project includes a set of small browser-based apps the teacher uses to do anything that touches student data. They run entirely offline — no network calls, no cloud, no AI in the loop. Your roster and gradebook never leave your laptop. **They're safe to use with real student data.**
 
-**The privacy story on one page:** [`setup/permissions/privacy-one-pager.html`](setup/permissions/privacy-one-pager.html) shows exactly what crosses the line to the AI and what never does — open it, print it, hand it to your principal or a curious colleague.
-
 You open them through **Class Tools** (`local-tools/ClassAI-dashboard.html`) — double-click it once, and a sidebar lets you jump between apps.
+
+<table>
+<tr>
+<td width="50%" valign="top"><img src="images/student-cards.png" alt="Student Cards — printable per-student cards listing missing work with checkboxes"><br><sub><b>Student Cards</b> — one printable card per student: missing work with checkboxes, or a full color-coded progress snapshot.</sub></td>
+<td width="50%" valign="top"><img src="images/app-studio.png" alt="App Studio — copy-paste prompts your AI uses to build new offline tools"><br><sub><b>App Studio</b> — when the included apps don't cover it, your AI builds the next tool from a copy-paste prompt.</sub></td>
+</tr>
+</table>
+
+**The privacy story on one page:** [`setup/permissions/privacy-one-pager.html`](setup/permissions/privacy-one-pager.html) shows exactly what crosses the line to the AI and what never does — open it, print it, hand it to your principal or a curious colleague.
 
 Included today:
 
@@ -104,7 +119,8 @@ Included today:
 
 **These tools are a starting set — your AI builds the next one.** Open **App Studio** in the sidebar for a gallery of ideas, each with a ready-to-paste prompt. When you need something the included apps don't cover, the **teacher-app-builder skill** (installable in Claude Cowork) lets the AI generate a new offline app for you. It asks a few questions, builds the HTML, runs a privacy check, and registers the new app with the Dashboard sidebar automatically. Install instructions: [docs/teacher-app-builder.md](docs/teacher-app-builder.md).
 
-## What's in this folder
+<details>
+<summary><b>What's in this folder</b> — full file map</summary>
 
 ```
 MyClassroomAIbot/
@@ -159,13 +175,11 @@ MyClassroomAIbot/
 │   └── fictional-gradebook-canvas.csv  ← 29 fake students, real Canvas LMS export format (emoji headers, points-possible row, "Last, First" names)
 │
 ├── images/                            ← screenshots shown in this README
-├── docs/
-│   ├── teacher-app-builder.md         ← install instructions for the build-your-own-app skill
-│   ├── 10x-roadmap.md                 ← where the project is headed next
-│   └── 10x-plan.md                    ← the prioritized plan behind the latest round of polish
-│
-└── teacher-app-builder-skill-upload.zip  ← installer for the build-your-own-app skill (see "The offline apps" section)
+└── docs/
+    └── teacher-app-builder.md         ← install instructions for the build-your-own-app skill
 ```
+
+</details>
 
 ## Going deeper without your students
 
@@ -178,7 +192,3 @@ From the Dashboard, walk through Student Cards → Class Pulse → Parent Messag
 Open this folder in Claude Cowork and say hi. Run Class Pulse on the demo class, paste the aggregate into Cowork, and ask the AI for "Monday's opening slide." That's the loop from "The experiment" running on a fictional class.
 
 The full setup walkthrough — admin permission, parent letter, day one with real students — is in [setup/getting-started.md](setup/getting-started.md).
-
-## Next steps
-
-Where this is headed — demo video, end-of-experiment report card, persona packs, a student-voice tool — lives in [docs/10x-roadmap.md](docs/10x-roadmap.md).
