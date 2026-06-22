@@ -71,13 +71,13 @@ The whole design rests on one rule: **the AI never sees student-identifying data
 
 ## See it in 90 seconds
 
-No setup, no real data, no account:
+No setup, no download, no account — try it right in your browser:
 
-1. Double-click `local-tools/ClassAI-dashboard.html`.
+1. Open the **[live dashboard](https://myclassroomassistant.com/local-tools/ClassAI-dashboard.html)**.
 2. Click **Progress Cards** in the sidebar, then **"Load the fictional demo class."** Print a card.
 3. Click **AI Export**, load the demo class again, and generate a summary — that's the name-free aggregate the AI runs on.
 
-That's the whole privacy architecture in your hands: real-feeling tools on your side of the line, an aggregate-only summary crossing it.
+That's the whole privacy architecture in your hands: real-feeling tools on your side of the line, an aggregate-only summary crossing it. It all runs in your browser on a fictional class — and when you switch to your real gradebook, you run the tools offline on your laptop (see [Get started](#get-started)), so student data never leaves your machine.
 
 Want the long view? **Demo Semester** (in the same sidebar) shows a fictional class running this project for 16 weeks — the Cowork chats, the slump, the turnaround, and the final report.
 

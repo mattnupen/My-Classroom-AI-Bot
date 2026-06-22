@@ -41,10 +41,13 @@
     display: inline-flex; align-items: center; gap: 8px;
     border-radius: 999px; padding: 9px 16px; font-size: 14.5px; font-weight: 700;
     text-decoration: none; cursor: pointer; border: 1.5px solid transparent; font-family: inherit;
+    white-space: nowrap;
   }
   .btn svg { width: 16px; height: 16px; }
   .btn-ghost { background: transparent; color: var(--cream); border-color: rgba(168,218,220,.5); }
   .btn-ghost:hover { border-color: var(--seafoam); background: rgba(168,218,220,.12); color: var(--cream); }
+  .btn-solid { background: var(--seafoam); color: #102a30; border-color: var(--seafoam); }
+  .btn-solid:hover { background: #fff; border-color: #fff; color: #102a30; }
 
   /* ---- Document layout ---- */
   .wrap { max-width: 760px; margin: 0 auto; padding: 0 22px; }
@@ -103,7 +106,7 @@
   /* ---- Two-up image row ---- */
   .img-row { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; margin: 26px 0; }
   .img-row figure { margin: 0; }
-  @media (max-width: 560px) { .img-row { grid-template-columns: 1fr; } .lead h1 { font-size: 33px; } }
+  @media (max-width: 560px) { .img-row { grid-template-columns: 1fr; } .lead h1 { font-size: 33px; } .btn-text { display: none; } }
 
   /* ---- Footer (kept, edited) ---- */
   footer { background: var(--navy); color: var(--cream); padding: 40px 22px; text-align: center; margin-top: 64px; }
@@ -120,9 +123,10 @@
   <header class="topbar">
     <a class="brand" href="#top">My Classroom Assistant</a>
     <span class="spacer"></span>
+    <a class="btn btn-solid" href="local-tools/ClassAI-dashboard.html" target="_blank" rel="noopener">▶&nbsp;Try the live demo</a>
     <a class="btn btn-ghost" href="https://github.com/mattnupen/My-Classroom-Assistant" target="_blank" rel="noopener">
       <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 .5C5.6.5.5 5.6.5 12c0 5.1 3.3 9.4 7.9 10.9.6.1.8-.2.8-.5v-2c-3.2.7-3.9-1.4-3.9-1.4-.5-1.3-1.3-1.7-1.3-1.7-1.1-.7.1-.7.1-.7 1.2.1 1.8 1.2 1.8 1.2 1 1.8 2.8 1.3 3.5 1 .1-.8.4-1.3.8-1.6-2.6-.3-5.3-1.3-5.3-5.7 0-1.3.5-2.3 1.2-3.1-.1-.3-.5-1.5.1-3.1 0 0 1-.3 3.3 1.2a11.5 11.5 0 0 1 6 0C17.3 4.9 18.3 5.2 18.3 5.2c.6 1.6.2 2.8.1 3.1.8.8 1.2 1.8 1.2 3.1 0 4.4-2.7 5.4-5.3 5.7.4.4.8 1.1.8 2.2v3.3c0 .3.2.6.8.5 4.6-1.5 7.9-5.8 7.9-10.9C23.5 5.6 18.4.5 12 .5z"/></svg>
-      View on GitHub
+      <span class="btn-text">View on GitHub</span>
     </a>
   </header>
 
@@ -184,15 +188,16 @@
     <div class="callout"><strong>The privacy story on one page:</strong> the printable <a href="setup/permissions/privacy-one-pager.html">privacy one-pager</a> shows exactly what crosses the line to the AI and what never does — open it, print it, hand it to your principal or a curious colleague.</div>
 
     <h2>See it in 90 seconds</h2>
-    <p>No setup, no real data, no account:</p>
+    <p>No setup, no download, no account — try it right in your browser:</p>
     <div class="steps">
       <ol>
-        <li>Double-click <code>local-tools/ClassAI-dashboard.html</code>.</li>
+        <li>Open the <a href="local-tools/ClassAI-dashboard.html" target="_blank" rel="noopener"><strong>live dashboard</strong></a>.</li>
         <li>Click <strong>Progress Cards</strong> in the sidebar, then <strong>“Load the fictional demo class.”</strong> Print a card.</li>
         <li>Click <strong>AI Export</strong>, load the demo class again, and generate a summary — that's the name-free aggregate the AI runs on.</li>
       </ol>
     </div>
-    <p>That's the whole privacy architecture in your hands: real-feeling tools on your side of the line, an aggregate-only summary crossing it.</p>
+    <p><a class="btn btn-solid" href="local-tools/ClassAI-dashboard.html" target="_blank" rel="noopener">▶&nbsp;Try the live demo</a></p>
+    <p>That's the whole privacy architecture in your hands: real-feeling tools on your side of the line, an aggregate-only summary crossing it. It all runs in your browser on a fictional class — and when you switch to your real gradebook, you run the tools offline on your laptop, so student data never leaves your machine.</p>
     <p>Want the long view? <strong>Demo Semester</strong> (in the same sidebar) shows a fictional class running this project for 16 weeks — the Cowork chats, the slump, the turnaround, and the final report.</p>
 
     <figure>
